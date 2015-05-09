@@ -1,0 +1,57 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="author" content="Stephen Gould"/>
+<title>Substitution Tracker</title>
+<link rel="stylesheet" href="body.css" type="text/css"/></head>
+<script type="text/javascript">
+var timerId = null;
+var seconds = 20 * 60;
+
+function clockStart() {
+  if (timerId) return;
+  timerId = setInterval(onTimer, 1000);
+  onTimer();
+}
+
+function clockStop() {
+  if (timerId == null) seconds = 20 * 60;
+  clearInterval(timerId)
+  timerId = null;
+  update();
+}
+
+function onTimer() {
+  seconds -= 1;
+  if (seconds < 0) seconds = 0;
+  update();
+}
+
+function update() {
+  var mm = Math.floor(seconds / 60);
+  if (mm < 10) mm = '0' + mm;
+  var ss = seconds % 60;
+  if (ss < 10) ss = '0' + ss;
+  document.getElementById("game_minutes").innerHTML = mm;
+  document.getElementById("game_seconds").innerHTML = ss;
+
+  if (timerId == null) {
+    document.getElementById("stop_button").innerHTML = "reset";
+  } else {
+    document.getElementById("stop_button").innerHTML = "stop";
+  }
+}
+</script>
+<body>
+
+<div class="game_timer">
+<span id="game_minutes">20</span>:<span id="game_seconds">00</span>
+</div>
+<a href="#" class="green button" id="start_button" onClick="clockStart(); return true;">start</a>
+<a href="#" class="red button" id="stop_button" onClick="clockStop(); return true;">reset</a>
+<p>
+
+
+</body>
+</html>
