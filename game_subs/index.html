@@ -12,7 +12,6 @@ var seconds = 20 * 60;
 var players = [];
 
 // TODO: sort-by field when clicking title
-// TODO: configuration page (game time/players names)
 // TODO: change to 5-by-2 grid
 
 function sec2text(s) {
@@ -24,16 +23,19 @@ function sec2text(s) {
 }
 
 function initPlayersTable() {
-  var names = ["Bart", "Lisa", "Maggie", "Marge", "Homer",
-	   "Player 6", "Player 7", "Player 8", "Player 9", "Player 10"];
+  //var names = ["Player 1", "Player 2", "Player 3", "Player 4", "Player 5",
+  //	   "Player 6", "Player 7", "Player 8", "Player 9", "Player 10"];
+
+  var names = document.getElementById("player_names").value.split("\n");
 
   players = [];
   for (var i = 0; i < names.length; i++) {
+    if (names[i].length == 0) continue;
     var p = Object();
     p.name = names[i];
     p.totalTime = 0;
     p.currTime = 0;
-    p.active = false;
+    p.active = true;
     players.push(p);
   }
 
@@ -53,6 +55,18 @@ function initPlayersTable() {
     var fcn = "function(){togglePlayer(" + i + "); return true;}";
     eval("row.addEventListener('click', " + fcn + ");");
   }
+ 
+  update();
+}
+
+function showConfig() {
+  document.getElementById("main").style.display = "none";
+  document.getElementById("config").style.display = "block";
+}
+
+function hideConfig() {
+  document.getElementById("main").style.display = "block";
+  document.getElementById("config").style.display = "none";
 }
 
 function togglePlayer(id) {
@@ -116,10 +130,11 @@ function update() {
   for (var i = 0; i < players.length; i++) {
     var row = table.rows[i + 1];
     if (players[i].active) {
-      row.style.color = "blue";
-      row.style.weight = "bold";
-    } else {
       row.style.color = "black";
+      row.style.backgroundColor = "#f0fff0";
+    } else {
+      row.style.color = "grey";
+      row.style.backgroundColor = "#fff0f0";
     }
     row.cells[1].innerHTML = sec2text(players[i].totalTime);
     row.cells[2].innerHTML = sec2text(players[i].currTime);
@@ -128,6 +143,7 @@ function update() {
 </script>
 <body onload="initPlayersTable();">
 
+<div id="main">
 <span class="game_title">Coach's Assistant</span>
 <br>
 <div class="game_timer">
@@ -146,10 +162,41 @@ function update() {
 </tr>
 </table>
 <br>
-<small style="color:#7f7f7f;">(click player to sub on/off)</small>
+<small style="color:#7f7f7f;">
+(click player to sub on/off)
+&nbsp;&nbsp;&nbsp;
+<span style="text-align:right;" onClick="showConfig();">(click &olarr; to configure)</span>
+</small>
 <br>
 </center>
 <p>
+</div>
+
+<div id="config" style="display:none;">
+<span class="game_title">Coach's Assistant Configuration</span>
+<p>
+
+<b>Game Time:</b><br>
+TODO
+<p>
+
+<b>Players:</b><br>
+<textarea rows="10" cols="20" id="player_names">
+Player 1
+Player 2
+Player 3
+Player 4
+Player 5
+Player 6
+Player 7
+Player 8
+Player 9
+Player 10
+</textarea>
+<p>
+
+<a href="#" class="blue button" id="update_button" onClick="initPlayersTable(); hideConfig(); return true;">update</a>
+</div>
 
 <address><small>
 Copyright &copy; 2015, Stephen Gould.
