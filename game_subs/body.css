@@ -39,6 +39,21 @@ body {
   border:1px solid #1818ab;
 }
 
+.game_title {
+  font-size:16px;
+  color:#7f7f7f;
+}
+
 .game_timer {
   font-size:96px;
+}
+
+.players_table {
+  font-size:16px;
+}
+
+.players_table th {
+  font-weight:bold;
+  background-color:#cfcfcf;
+  width:108px;
 }

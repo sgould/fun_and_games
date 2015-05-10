@@ -8,6 +8,51 @@
 <script type="text/javascript">
 var timerId = null;
 var seconds = 20 * 60;
+var players = [];
+
+function sec2text(s) {
+  var mm = Math.floor(s / 60);
+  if (mm < 10) mm = '0' + mm;
+  var ss = s % 60;
+  if (ss < 10) ss = '0' + ss;
+  return mm + ":" + ss;
+}
+
+function initPlayersTable() {
+  var names = ["Bart", "Lisa", "Maggie", "Marge", "Homer",
+	   "Player 6", "Player 7", "Player 8", "Player 9", "Player 10"];
+
+  players = [];
+  for (var i = 0; i < names.length; i++) {
+    var p = Object();
+    p.name = names[i];
+    p.totalTime = 0;
+    p.currTime = 0;
+    p.active = false;
+    players.push(p);
+  }
+
+  var table = document.getElementById("players_table");
+  // delete existing rows
+  for (var i = table.rows.length - 1; i > 0; i--) {
+    table.deleteRow(i);
+  }
+  // add new rows
+  for (var i = 0; i < players.length; i++) {
+    var row = table.insertRow(i + 1);		     
+    row.insertCell(0).appendChild(document.createTextNode(players[i].name));
+    row.insertCell(1).appendChild(document.createTextNode(sec2text(0)));
+    row.insertCell(2).appendChild(document.createTextNode(sec2text(0)));
+    var fcn = "function(){togglePlayer(" + i + "); return true;}";
+    eval("row.addEventListener('click', " + fcn + ");");
+  }
+}
+
+function togglePlayer(id) {
+  players[id].active = !players[id].active;
+  players[id].currTime = 0;
+  update();
+}
 
 function clockStart() {
   if (timerId) return;
@@ -16,19 +61,34 @@ function clockStart() {
 }
 
 function clockStop() {
-  if (timerId == null) seconds = 20 * 60;
+  // reset if timer is null
+  if (timerId == null) {
+    initPlayersTable();
+    seconds = 20 * 60;
+  }
   clearInterval(timerId)
   timerId = null;
   update();
 }
 
 function onTimer() {
+  // game clock
   seconds -= 1;
   if (seconds < 0) seconds = 0;
+
+  // players
+  for (var i = 0; i < players.length; i++) {
+    players[i].currTime += 1;
+    if (players[i].active)
+      players[i].totalTime += 1;
+  }
+
+  // update gui
   update();
 }
 
 function update() {
+  // update game clock
   var mm = Math.floor(seconds / 60);
   if (mm < 10) mm = '0' + mm;
   var ss = seconds % 60;
@@ -36,15 +96,32 @@ function update() {
   document.getElementById("game_minutes").innerHTML = mm;
   document.getElementById("game_seconds").innerHTML = ss;
 
+  // todo: flash red if zero and running
+
   if (timerId == null) {
     document.getElementById("stop_button").innerHTML = "reset";
   } else {
     document.getElementById("stop_button").innerHTML = "stop";
   }
+
+  // update players
+  var table = document.getElementById("players_table");
+  for (var i = 0; i < players.length; i++) {
+    var row = table.rows[i + 1];
+    if (players[i].active) {
+      row.style.color = "blue";
+    } else {
+      row.style.color = "black";
+    }
+    row.cells[1].innerHTML = sec2text(players[i].totalTime);
+    row.cells[2].innerHTML = sec2text(players[i].currTime);
+  }
 }
 </script>
-<body>
+<body onload="initPlayersTable();">
 
+<span class="game_title">Coach's Assistant</span>
+<br>
 <div class="game_timer">
 <span id="game_minutes">20</span>:<span id="game_seconds">00</span>
 </div>
@@ -52,6 +129,18 @@ function update() {
 <a href="#" class="red button" id="stop_button" onClick="clockStop(); return true;">reset</a>
 <p>
 
+<center>
+<table class="players_table" id="players_table">
+<tr>
+<th>Player</th>
+<th>Total Time</th>
+<th>Time Subbed</th>
+</tr>
+</table>
+<br>
+<small style="color:#7f7f7f;">(Click player to sub on/off)</small>
+<br>
+</center>
 
 </body>
 </html>
