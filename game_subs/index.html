@@ -10,6 +10,7 @@
 var timerId = null;
 var seconds = 20 * 60;
 var players = [];
+var flasher = false;
 
 // TODO: sort-by field when clicking title
 // TODO: change to 5-by-2 grid
@@ -78,7 +79,7 @@ function togglePlayer(id) {
 function clockStart() {
   if (timerId) return;
   timerId = setInterval(onTimer, 1000);
-  onTimer();
+  update();
 }
 
 function clockStop() {
@@ -96,6 +97,7 @@ function onTimer() {
   // game clock
   seconds -= 1;
   if (seconds < 0) seconds = 0;
+  flasher = !flasher;
 
   // players
   for (var i = 0; i < players.length; i++) {
@@ -117,12 +119,16 @@ function update() {
   document.getElementById("game_minutes").innerHTML = mm;
   document.getElementById("game_seconds").innerHTML = ss;
 
-  // todo: flash red if zero and running
-
   if (timerId == null) {
+    document.getElementById("game_timer").style.color = "black";
     document.getElementById("stop_button").innerHTML = "reset";
   } else {
     document.getElementById("stop_button").innerHTML = "stop";
+    if ((seconds == 0) && flasher) {
+      document.getElementById("game_timer").style.color = "#fff0f0";
+    } else {
+      document.getElementById("game_timer").style.color = "black";
+    }
   }
 
   // update players
@@ -146,7 +152,7 @@ function update() {
 <div id="main">
 <span class="game_title">Coach's Assistant</span>
 <br>
-<div class="game_timer">
+<div class="game_timer" id="game_timer">
 <span id="game_minutes">20</span>:<span id="game_seconds">00</span>
 </div>
 <a href="#" class="green button" id="start_button" onClick="clockStart(); return true;">start</a>
