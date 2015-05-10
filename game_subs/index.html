@@ -2,13 +2,18 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
 <meta name="author" content="Stephen Gould"/>
-<title>Substitution Tracker</title>
+<title>Coach's Assistant</title>
 <link rel="stylesheet" href="body.css" type="text/css"/></head>
 <script type="text/javascript">
 var timerId = null;
 var seconds = 20 * 60;
 var players = [];
+
+// TODO: sort-by field when clicking title
+// TODO: configuration page (game time/players names)
+// TODO: change to 5-by-2 grid
 
 function sec2text(s) {
   var mm = Math.floor(s / 60);
@@ -43,6 +48,8 @@ function initPlayersTable() {
     row.insertCell(0).appendChild(document.createTextNode(players[i].name));
     row.insertCell(1).appendChild(document.createTextNode(sec2text(0)));
     row.insertCell(2).appendChild(document.createTextNode(sec2text(0)));
+    row.cells[1].style.textAlign="right";
+    row.cells[2].style.textAlign="right";
     var fcn = "function(){togglePlayer(" + i + "); return true;}";
     eval("row.addEventListener('click', " + fcn + ");");
   }
@@ -110,6 +117,7 @@ function update() {
     var row = table.rows[i + 1];
     if (players[i].active) {
       row.style.color = "blue";
+      row.style.weight = "bold";
     } else {
       row.style.color = "black";
     }
@@ -132,15 +140,19 @@ function update() {
 <center>
 <table class="players_table" id="players_table">
 <tr>
-<th>Player</th>
-<th>Total Time</th>
-<th>Time Subbed</th>
+<th>Player Name</th>
+<th>Time Played</th>
+<th>Last Change</th>
 </tr>
 </table>
 <br>
-<small style="color:#7f7f7f;">(Click player to sub on/off)</small>
+<small style="color:#7f7f7f;">(click player to sub on/off)</small>
 <br>
 </center>
+<p>
 
+<address><small>
+Copyright &copy; 2015, Stephen Gould.
+</small></address>
 </body>
 </html>
