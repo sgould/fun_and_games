@@ -8,10 +8,17 @@
 <link rel="stylesheet" href="body.css" type="text/css"/></head>
 <script type="text/javascript">
 var timerId = null;
-var seconds = 20 * 60;
+var gameSeconds = 20 * 60;
 var players = [];
 var gridView = false;
 var flasher = false;
+var playerTimerResolution = 5;
+var highContrast = false;
+
+var bgColourInactive = "#f0fff0";
+var bgColourActive = "#fff0f0";
+var bgColourInactiveHC = "#000000";
+var bgColourActiveHC = "#f0f0f0";
 
 // TODO: sort-by field when clicking title
 // TODO: vibrate on 5 minutes
@@ -21,6 +28,7 @@ function sec2text(s) {
   var mm = Math.floor(s / 60);
   if (mm < 10) mm = '0' + mm;
   var ss = s % 60;
+  ss = playerTimerResolution * Math.floor(ss / playerTimerResolution);
   if (ss < 10) ss = '0' + ss;
   return mm + ":" + ss;
 }
@@ -106,6 +114,11 @@ function toggleView() {
   update();
 }
 
+function toggleContrast() {
+  highContrast = !highContrast;
+  update();
+}
+
 function togglePlayer(id) {
   players[id].active = !players[id].active;
   players[id].currTime = 0;
@@ -122,7 +135,7 @@ function clockStop() {
   // reset if timer is null
   if (timerId == null) {
     initializePlayers();
-    seconds = 20 * 60;
+    gameSeconds = 20 * 60;
   }
   clearInterval(timerId)
   timerId = null;
@@ -131,8 +144,8 @@ function clockStop() {
 
 function onTimer() {
   // game clock
-  seconds -= 1;
-  if (seconds < 0) seconds = 0;
+  gameSeconds -= 1;
+  if (gameSeconds < 0) gameSeconds = 0;
   flasher = !flasher;
 
   // players
@@ -148,9 +161,9 @@ function onTimer() {
 
 function update() {
   // update game clock
-  var mm = Math.floor(seconds / 60);
+  var mm = Math.floor(gameSeconds / 60);
   if (mm < 10) mm = '0' + mm;
-  var ss = seconds % 60;
+  var ss = gameSeconds % 60;
   if (ss < 10) ss = '0' + ss;
   document.getElementById("game_minutes").innerHTML = mm;
   document.getElementById("game_seconds").innerHTML = ss;
@@ -160,7 +173,7 @@ function update() {
     document.getElementById("stop_button").innerHTML = "reset";
   } else {
     document.getElementById("stop_button").innerHTML = "stop";
-    if ((seconds == 0) && flasher) {
+    if ((gameSeconds == 0) && flasher) {
       document.getElementById("game_timer").style.color = "#fff0f0";
     } else {
       document.getElementById("game_timer").style.color = "black";
@@ -176,10 +189,10 @@ function update() {
         sec2text(players[i].totalTime) + ") &nbsp; (" + sec2text(players[i].currTime) + ")</small>";
       if (players[i].active) {
         c.style.color = "black";
-        c.style.backgroundColor = "#f0fff0";
+        c.style.backgroundColor = (highContrast ? bgColourActiveHC : bgColourActive);
       } else {
         c.style.color = "grey";
-        c.style.backgroundColor = "#fff0f0";
+        c.style.backgroundColor = (highContrast ? bgColourInactiveHC : bgColourInactive);
       }
     }
   } else {
@@ -187,10 +200,10 @@ function update() {
       var row = table.rows[i + 1];
       if (players[i].active) {
         row.style.color = "black";
-        row.style.backgroundColor = "#f0fff0";
+        row.style.backgroundColor = (highContrast ? bgColourActiveHC : bgColourActive);
       } else {
         row.style.color = "grey";
-        row.style.backgroundColor = "#fff0f0";
+        row.style.backgroundColor = (highContrast ? bgColourInactiveHC : bgColourInactive);
       }
       row.cells[1].innerHTML = sec2text(players[i].totalTime);
       row.cells[2].innerHTML = sec2text(players[i].currTime);
@@ -215,10 +228,11 @@ function update() {
 </table>
 <br>
 <small style="color:#7f7f7f;">
-(click name to sub on/off)
+(tap name on/off)
 &nbsp;&nbsp;&nbsp;
 <span onClick="showConfig();">(&olarr; configure)</span>
-<span onClick="toggleView();">(&boxplus; grid/list)</span>
+<span onClick="toggleView();">(&sharp; grid/list)</span>
+<span onClick="toggleContrast();">(&square; contrast)</span>
 </small>
 <br>
 </center>
