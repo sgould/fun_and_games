@@ -31,6 +31,8 @@ var playerTimerResolution = ("up" in urlParams ? urlParams["up"] : 5);
 if ((playerTimerResolution <= 0) || isNaN(playerTimerResolution)) playerTimerResolution = 1;
 // TODO: parse player names
 // TODO: config should return a URL to maintain state
+var vibrateTimeout = resetSeconds;
+// TODO: make vibration configurable
 
 // globals
 var timerId = null;
@@ -42,8 +44,6 @@ var bgColourActive = "#d0ffd0";
 var bgColourInactive = "#ffd0d0";
 var bgColourActiveHC = "#f0f0f0";
 var bgColourInactiveHC = "#000000";
-
-// TODO: vibrate on 5 minutes
 
 function sec2text(s) {
   var mm = Math.floor(s / 60);
@@ -178,6 +178,10 @@ function sortBy(field) {
 function onTimer() {
   // game clock
   gameSeconds -= 1;
+  if (gameSeconds % vibrateTimeout == 0) {
+    navigator.vibrate = navigator.vibrate || navigator.webkitVibrate || navigator.mozVibrate || navigator.msVibrate;
+    navigator.vibrate([500]);
+  }
   if (gameSeconds < 0) gameSeconds = 0;
   flasher = !flasher;
 
@@ -263,12 +267,13 @@ function update() {
 <center>
 <table class="players_table" id="players_table">
 </table>
-<br>
 <small style="color:#7f7f7f;">
-(tap name on/off)
-&nbsp;&nbsp;&nbsp;
+[tap name on/off; tap header to sort; 5 sec. updates]
+<br>
 <span onClick="showConfig();">(&olarr; configure)</span>
+&nbsp;
 <span onClick="toggleView();">(&sharp; grid/list)</span>
+&nbsp;
 <span onClick="toggleContrast();">(&square; contrast)</span>
 </small>
 <br>
@@ -296,10 +301,6 @@ Player 7
 Player 8
 Player 9
 Player 10
-</textarea>
-<p>
-
-<textarea id="debug">
 </textarea>
 <p>
 
