@@ -31,8 +31,7 @@ var playerTimerResolution = ("up" in urlParams ? urlParams["up"] : 5);
 if ((playerTimerResolution <= 0) || isNaN(playerTimerResolution)) playerTimerResolution = 1;
 // TODO: parse player names
 // TODO: config should return a URL to maintain state
-var vibrateTimeout = resetSeconds;
-// TODO: make vibration configurable
+var vibrateTimeout = ("vb" in urlParams ? urlParams["vb"] : resetSeconds);
 
 // globals
 var timerId = null;
@@ -51,15 +50,20 @@ function sec2text(s) {
   var ss = s % 60;
   ss = playerTimerResolution * Math.floor(ss / playerTimerResolution);
   if (ss < 10) ss = '0' + ss;
+  if ((timerId != null) && flasher)
+    return mm + " " + ss;
   return mm + ":" + ss;
 }
 
-function initializePlayers() {
-  //var names = ["Player 1", "Player 2", "Player 3", "Player 4", "Player 5",
-  //	   "Player 6", "Player 7", "Player 8", "Player 9", "Player 10"];
+function initializeGame() {
+  if (timerId != null) {
+    clearInterval(timerId)
+     timerId = null;
+     flasher = false;
+  }
+  gameSeconds = resetSeconds;
 
   var names = document.getElementById("player_names").value.split("\n");
-
   players = [];
   for (var i = 0; i < names.length; i++) {
     if (names[i].length == 0) continue;
@@ -157,8 +161,7 @@ function clockStart() {
 function clockStop() {
   // reset if timer is null
   if (timerId == null) {
-    initializePlayers();
-    gameSeconds = resetSeconds;
+    initializeGame();
   }
   clearInterval(timerId)
   timerId = null;
@@ -248,7 +251,7 @@ function update() {
   }
 }
 </script>
-<body onload="initializePlayers();">
+<body onload="initializeGame();">
 
 <div id="main">
 <span class="game_title">Coach's Assistant</span>
@@ -264,7 +267,7 @@ function update() {
 <table class="players_table" id="players_table">
 </table>
 <small style="color:#7f7f7f;">
-[tap name on/off; tap header to sort; 5 sec. updates]
+[tap name on/off; tap header to re-sort]
 <br>
 <span onClick="showConfig();">(&olarr; configure)</span>
 &nbsp;
@@ -282,7 +285,7 @@ function update() {
 <p>
 
 <b>Game Time:</b><br>
-TODO
+<input type="text" id="input_time" value="20" size="3"> minutes
 <p>
 
 <b>Players:</b><br>
@@ -300,7 +303,7 @@ Player 10
 </textarea>
 <p>
 
-<a href="#" class="blue button" id="update_button" onClick="initializePlayers(); hideConfig(); return true;">update</a>
+<a href="#" class="blue button" id="update_button" onClick="initializeGame(); hideConfig(); return true;">start</a>
 </div>
 
 <address><small>
