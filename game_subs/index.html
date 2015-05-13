@@ -216,7 +216,7 @@ function update() {
   } else {
     document.getElementById("start_stop_button").className = "red button";
     document.getElementById("start_stop_button").innerHTML = "pause";
-    document.getElementById("reset_button").className = "white button";
+    document.getElementById("reset_button").className = "disabled_button";
     if ((gameSeconds == 0) && flasher) {
       document.getElementById("game_timer").style.color = "#fff0f0";
     } else {

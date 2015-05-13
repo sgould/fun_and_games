@@ -39,15 +39,20 @@ body {
   border:1px solid #1818ab;
 }
 
-.white {
+.disabled_button {
+  -moz-border-radius:28px;
+  -webkit-border-radius:28px;
+  border-radius:28px;
+  display:inline-block;
+  cursor:pointer;
+  color:#7f7f7f;
   background-color:#ffffff;
   border:1px solid #7f7f7f;
-  color:#7f7f7f;
-}
-
-.white:active {
-  position:relative;
-  top:0px;
+  font-family:Arial;
+  font-size:17px;
+  padding:12px 32px;
+  width:60px;
+  text-decoration:none;
 }
 
 .game_title {
