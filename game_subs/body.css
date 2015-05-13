@@ -39,6 +39,17 @@ body {
   border:1px solid #1818ab;
 }
 
+.white {
+  background-color:#ffffff;
+  border:1px solid #7f7f7f;
+  color:#7f7f7f;
+}
+
+.white:active {
+  position:relative;
+  top:0px;
+}
+
 .game_title {
   font-size:16px;
   color:#7f7f7f;

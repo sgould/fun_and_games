@@ -152,19 +152,19 @@ function togglePlayer(id) {
   update();
 }
 
-function clockStart() {
-  if (timerId) return;
-  timerId = setInterval(onTimer, 1000);
+function clockStartStop() {
+  if (timerId != null) {
+    clearInterval(timerId)
+    timerId = null;
+  } else {
+    timerId = setInterval(onTimer, 1000);
+  }
   update();
 }
 
-function clockStop() {
-  // reset if timer is null
-  if (timerId == null) {
-    initializeGame();
-  }
-  clearInterval(timerId)
-  timerId = null;
+function clockReset() {
+  if (timerId != null) return;
+  initializeGame();
   update();
 }
 
@@ -210,9 +210,13 @@ function update() {
 
   if (timerId == null) {
     document.getElementById("game_timer").style.color = "black";
-    document.getElementById("stop_button").innerHTML = "reset";
+    document.getElementById("start_stop_button").className = "green button";
+    document.getElementById("start_stop_button").innerHTML = "start";
+    document.getElementById("reset_button").className = "red button";
   } else {
-    document.getElementById("stop_button").innerHTML = "stop";
+    document.getElementById("start_stop_button").className = "red button";
+    document.getElementById("start_stop_button").innerHTML = "pause";
+    document.getElementById("reset_button").className = "white button";
     if ((gameSeconds == 0) && flasher) {
       document.getElementById("game_timer").style.color = "#fff0f0";
     } else {
@@ -259,8 +263,8 @@ function update() {
 <div class="game_timer" id="game_timer">
 <span id="game_minutes">20</span>:<span id="game_seconds">00</span>
 </div>
-<a href="#" class="green button" id="start_button" onClick="clockStart(); return true;">start</a>
-<a href="#" class="red button" id="stop_button" onClick="clockStop(); return true;">reset</a>
+<a href="#" class="green button" id="start_stop_button" onClick="clockStartStop(); return true;">start</a>
+<a href="#" class="red button" id="reset_button" onClick="clockReset(); return true;">reset</a>
 <p>
 
 <center>
