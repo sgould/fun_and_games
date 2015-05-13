@@ -27,7 +27,7 @@ var resetSeconds = ("tm" in urlParams ? Number(urlParams["tm"]) : 20 * 60);
 if ((resetSeconds <= 0) || isNaN(resetSeconds)) resetSeconds = 20 * 60;
 var gridView = ("gd" in urlParams ? true : false);
 var highContrast = ("hc" in urlParams ? true : false);
-var playerTimerResolution = ("up" in urlParams ? urlParams["up"] : 5);
+var playerTimerResolution = ("up" in urlParams ? urlParams["up"] : 1);
 if ((playerTimerResolution <= 0) || isNaN(playerTimerResolution)) playerTimerResolution = 1;
 // TODO: parse player names
 // TODO: config should return a URL to maintain state
@@ -215,7 +215,7 @@ function update() {
     document.getElementById("reset_button").className = "red button";
   } else {
     document.getElementById("start_stop_button").className = "red button";
-    document.getElementById("start_stop_button").innerHTML = "pause";
+    document.getElementById("start_stop_button").innerHTML = "stop";
     document.getElementById("reset_button").className = "disabled_button";
     if ((gameSeconds == 0) && flasher) {
       document.getElementById("game_timer").style.color = "#fff0f0";
@@ -288,12 +288,26 @@ function update() {
 <span class="game_title">Coach's Assistant Configuration</span>
 <p>
 
-<b>Game Time:</b><br>
-<input type="text" id="input_time" value="20" size="3"> minutes
+<center>
+<table>
+<tr>
+<td><b>Game Time:&nbsp;</b></td>
+<td><input type="text" id="input_tm" value="20" size="3"> minutes</td>
+</tr>
+<tr>
+<td><b>Update Interval:&nbsp;</b></td>
+<td><input type="text" id="input_up" value="1" size="3"> seconds</td>
+</tr>
+<tr>
+<td><b>Vibrate Interval:&nbsp;</b></td>
+<td><input type="text" id="input_vb" value="0" size="3"> minutes</td>
+</tr>
+</table>
+</center>
 <p>
 
 <b>Players:</b><br>
-<textarea rows="10" cols="20" id="player_names">
+<textarea rows="10" cols="25" id="player_names">
 Player 1
 Player 2
 Player 3
