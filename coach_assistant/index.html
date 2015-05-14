@@ -22,22 +22,28 @@ var urlParams;
        urlParams[decode(match[1])] = decode(match[2]);
 })();
 
-// url or defaults
-var resetSeconds = ("tm" in urlParams ? Number(urlParams["tm"]) : 20 * 60);
-if ((resetSeconds <= 0) || isNaN(resetSeconds)) resetSeconds = 20 * 60;
+// configuration
+var config = {resetSeconds: 20 * 60, updateInerval: 5, vibrateInterval: 0, names: []};
+if ("json" in urlParams) {
+encodeURIComponent(JSON.stringify(config));
+  config = JSON.parse(urlParams["json"]);
+}
+if ((config.resetSeconds <= 0) || isNaN(config.resetSeconds)) config.resetSeconds = 20 * 60;
+if ((config.updateInterval <= 0) || isNaN(config.updateInterval)) config.updateInterval = 1;
+if ((config.vibrateInterval <= 0) || isNaN(config.vibrateInterval)) config.vibrateInterval = 0;
+if (config.names.length == 0) {
+  for (var i = 0; i < 10; i++) {
+    config.names.push("Player " + (i + 1));
+  }
+}
+
+// game state (global)
 var gridView = ("gd" in urlParams ? true : false);
 var highContrast = ("hc" in urlParams ? true : false);
-var playerTimerResolution = ("up" in urlParams ? urlParams["up"] : 1);
-if ((playerTimerResolution <= 0) || isNaN(playerTimerResolution)) playerTimerResolution = 1;
-// TODO: parse player names
-// TODO: config should return a URL to maintain state
-var vibrateTimeout = ("vb" in urlParams ? urlParams["vb"] : resetSeconds);
-
-// globals
 var timerId = null;
-var gameSeconds = resetSeconds;
-var players = [];
+var gameSeconds = config.resetSeconds;
 var flasher = false;
+players = [];
 
 var bgColourActive = "#d0ffd0";
 var bgColourInactive = "#ffd0d0";
@@ -48,7 +54,7 @@ function sec2text(s) {
   var mm = Math.floor(s / 60);
   if (mm < 10) mm = '0' + mm;
   var ss = s % 60;
-  ss = playerTimerResolution * Math.floor(ss / playerTimerResolution);
+  ss = config.updateInterval * Math.floor(ss / config.updateInterval);
   if (ss < 10) ss = '0' + ss;
   if ((timerId != null) && flasher)
     return mm + " " + ss;
@@ -58,22 +64,21 @@ function sec2text(s) {
 function initializeGame() {
   if (timerId != null) {
     clearInterval(timerId)
-     timerId = null;
-     flasher = false;
+    timerId = null;
+    flasher = false;
   }
-  gameSeconds = resetSeconds;
+  gameSeconds = config.resetSeconds;
 
-  var names = document.getElementById("player_names").value.split("\n");
+  //config.names = document.getElementById("input_names").value.split("\n");
   players = [];
-  for (var i = 0; i < names.length; i++) {
-    if (names[i].length == 0) continue;
-    var p = Object();
-    p.name = names[i].trim();
-    p.totalTime = 0;
-    p.currTime = 0;
-    p.active = true;
+  for (var i = 0; i < config.names.length; i++) {
+    if (config.names[i].length == 0) continue;
+    var p = {name: config.names[i].trim(), totalTime: 0, currTime: 0, active: true};
     players.push(p);
   }
+  
+  // DEBUGGING
+  //document.getElementById("input_names").value = encodeURIComponent(JSON.stringify(config));
 
   initPlayerView();
   update();
@@ -181,7 +186,7 @@ function sortBy(field) {
 function onTimer() {
   // game clock
   gameSeconds -= 1;
-  if (gameSeconds % vibrateTimeout == 0) {
+  if ((config.vibrateInterval > 0) && (gameSeconds % config.vibrateInterval == 0)) {
     navigator.vibrate = navigator.vibrate || navigator.webkitVibrate || navigator.mozVibrate || navigator.msVibrate;
     navigator.vibrate([500]);
   }
@@ -307,7 +312,7 @@ function update() {
 <p>
 
 <b>Players:</b><br>
-<textarea rows="10" cols="25" id="player_names">
+<textarea rows="10" cols="25" id="input_names">
 Player 1
 Player 2
 Player 3
@@ -321,7 +326,12 @@ Player 10
 </textarea>
 <p>
 
-<a href="#" class="blue button" id="update_button" onClick="initializeGame(); hideConfig(); return true;">game</a>
+<a href="#" class="blue wide_button" id="update_button" onClick="initializeGame(); hideConfig(); return true;">game on</a>
+<p>
+<small>
+<b>Tip:</b> After clicking the "game on" button bookmark the page for quick access in the future.
+</small>
+
 </div>
 
 <address><small>
