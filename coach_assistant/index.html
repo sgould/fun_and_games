@@ -25,7 +25,6 @@ var urlParams;
 // configuration
 var config = {resetSeconds: 20 * 60, updateInerval: 5, vibrateInterval: 0, names: []};
 if ("json" in urlParams) {
-encodeURIComponent(JSON.stringify(config));
   config = JSON.parse(urlParams["json"]);
 }
 if ((config.resetSeconds <= 0) || isNaN(config.resetSeconds)) config.resetSeconds = 20 * 60;
@@ -69,7 +68,6 @@ function initializeGame() {
   }
   gameSeconds = config.resetSeconds;
 
-  //config.names = document.getElementById("input_names").value.split("\n");
   players = [];
   for (var i = 0; i < config.names.length; i++) {
     if (config.names[i].length == 0) continue;
@@ -77,9 +75,6 @@ function initializeGame() {
     players.push(p);
   }
   
-  // DEBUGGING
-  //document.getElementById("input_names").value = encodeURIComponent(JSON.stringify(config));
-
   initPlayerView();
   update();
 }
@@ -138,6 +133,24 @@ function showConfig() {
 function hideConfig() {
   document.getElementById("main").style.display = "block";
   document.getElementById("config").style.display = "none";
+
+  config.names = document.getElementById("input_names").value.split("\n");
+  config.resetSeconds = Math.floor(document.getElementById("input_tm").value * 60);
+  config.updateInterval = Math.floor(document.getElementById("input_up").value);
+  config.vibrateInterval = Math.floor(document.getElementById("input_vb").value * 60);
+  if ((config.resetSeconds < 0) || isNaN(config.resetSeconds)) {
+    config.resetSeconds = 0;
+    document.getElementById("input_tm").value = 0;
+  }
+  if ((config.updateInterval < 1) || isNaN(config.updateInterval)) {
+    config.updateInterval = 1;
+    document.getElementById("input_up").value = 1;
+  }
+  if ((config.vibrateInterval < 0) || isNaN(config.vibrateInterval)) {
+    config.vibrateInterval = 0;
+    document.getElementById("input_vb").value = 0;
+  }
+  // TODO: move to URL with: encodeURIComponent(JSON.stringify(config));
 }
 
 function toggleView() {
@@ -260,7 +273,7 @@ function update() {
   }
 }
 </script>
-<body onload="initializeGame();">
+<body onload="if ('json' in urlParams) { initializeGame(); } else { showConfig(); }">
 
 <div id="main">
 <span class="game_title">Coach's Assistant</span>
@@ -326,10 +339,11 @@ Player 10
 </textarea>
 <p>
 
-<a href="#" class="blue wide_button" id="update_button" onClick="initializeGame(); hideConfig(); return true;">game on</a>
+<a href="#" class="blue wide_button" id="update_button" onClick="hideConfig(); initializeGame(); return true;">game on</a>
 <p>
-<small>
-<b>Tip:</b> After clicking the "game on" button bookmark the page for quick access in the future.
+<small style="color:#7f7f7f;">
+<b>Tip:</b> After clicking the "game on" button bookmark the page<br>
+for quick access to this configuration in the future.
 </small>
 
 </div>
