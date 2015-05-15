@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="body.css" type="text/css"/></head>
 <script type="text/javascript">
 // configuration
-var config = {resetSeconds: 20 * 60, updateInterval: 5, vibrateInterval: 0, 
+var config = {version: 100, resetSeconds: 20 * 60, updateInterval: 5, vibrateInterval: 0, 
   gridView: false, highContrast: false, names: []};
 if (typeof(Storage) !== "undefined") {
   if (localStorage.getItem("config") != null) {
@@ -116,12 +116,16 @@ function initPlayerView() {
 function showConfig() {
   document.getElementById("main").style.display = "none";
   document.getElementById("config").style.display = "block";
+  document.getElementById("config_back_button").style.display = "block";
 }
 
 function hideConfig() {
   document.getElementById("main").style.display = "block";
   document.getElementById("config").style.display = "none";
+  document.getElementById("config_back_button").style.display = "none";
+}
 
+function onGameOn() {
   config.names = document.getElementById("input_names").value.split("\n");
   config.resetSeconds = Math.floor(document.getElementById("input_tm").value * 60);
   config.updateInterval = Math.floor(document.getElementById("input_up").value);
@@ -129,6 +133,7 @@ function hideConfig() {
   if ((config.resetSeconds < 0) || isNaN(config.resetSeconds)) {
     config.resetSeconds = 0;
   }
+  if (config.resetSeconds > 120 * 60) config.resetSeconds = 120 * 60;
   if ((config.updateInterval < 1) || isNaN(config.updateInterval)) {
     config.updateInterval = 1;
   }
@@ -140,6 +145,7 @@ function hideConfig() {
     localStorage.setItem("config", JSON.stringify(config));
   }
 
+  hideConfig();
   initializeGame();
 }
 
@@ -328,7 +334,11 @@ function update() {
 <p>
 </center>
 
-<a href="#" class="blue wide_button" id="update_button" onClick="hideConfig();">game on</a>
+<a href="#" class="blue wide_button" id="update_button" onClick="onGameOn();">game on</a>
+<p>
+<div id="config_back_button" style="display:none;">
+<a href="#" class="red wide_button" onClick="hideConfig();">cancel</a>
+</div>
 <p>
 
 </div>
