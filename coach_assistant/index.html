@@ -23,7 +23,7 @@ var urlParams;
 })();
 
 // configuration
-var config = {resetSeconds: 20 * 60, updateInerval: 5, vibrateInterval: 0, names: []};
+var config = {resetSeconds: 20 * 60, updateInterval: 5, vibrateInterval: 0, names: []};
 if ("json" in urlParams) {
   config = JSON.parse(urlParams["json"]);
 }
@@ -82,6 +82,12 @@ function initializeGame() {
 
   initPlayerView();
   update();
+
+  if (("config" in urlParams) || !("json" in urlParams)) {
+    showConfig();
+  } else {
+    hideConfig();
+  }
 }
 
 function initPlayerView() {
@@ -133,14 +139,19 @@ function initPlayerView() {
 function showConfig() {
   document.getElementById("main").style.display = "none";
   document.getElementById("config").style.display = "block";
-
-  // TODO: back button does not go back to correct place, need to reload
 }
 
 function hideConfig() {
-  //document.getElementById("main").style.display = "block";
-  //document.getElementById("config").style.display = "none";
+  document.getElementById("main").style.display = "block";
+  document.getElementById("config").style.display = "none";
+}
 
+function gotoConfigPage() {
+  var json = encodeURIComponent(JSON.stringify(config));
+  window.location.search = "config&json=" + json;
+}
+
+function gotoGamePage() {
   config.names = document.getElementById("input_names").value.split("\n");
   config.resetSeconds = Math.floor(document.getElementById("input_tm").value * 60);
   config.updateInterval = Math.floor(document.getElementById("input_up").value);
@@ -279,9 +290,9 @@ function update() {
   }
 }
 </script>
-<body onload="initializeGame(); if (!('json' in urlParams)) { showConfig(); }">
+<body onload="initializeGame();">
 
-<div id="main">
+<div id="main" style="display:none;">
 <span class="game_title">Coach's Assistant</span>
 <br>
 <div class="game_timer" id="game_timer">
@@ -297,7 +308,7 @@ function update() {
 <small style="color:#7f7f7f;">
 [tap name on/off; tap header to re-sort]
 <br>
-<span onClick="showConfig();">(&olarr; configure)</span>
+<span onClick="gotoConfigPage();">(&olarr; configure)</span>
 &nbsp;
 <span onClick="toggleView();">(&sharp; grid/list)</span>
 &nbsp;
@@ -308,7 +319,7 @@ function update() {
 <p>
 </div>
 
-<div id="config" style="display:none;">
+<div id="config" style="display:block;">
 <span class="game_title">Coach's Assistant Configuration</span>
 <p>
 
@@ -335,7 +346,7 @@ function update() {
 </textarea>
 <p>
 
-<a href="#" class="blue wide_button" id="update_button" onClick="hideConfig(); initializeGame(); return true;">game on</a>
+<a href="#" class="blue wide_button" id="update_button" onClick="gotoGamePage(); return true;">game on</a>
 <p>
 <small style="color:#7f7f7f;">
 <b>Tip:</b> After clicking the "game on" button bookmark the page<br>
