@@ -75,6 +75,11 @@ function initializeGame() {
     players.push(p);
   }
   
+  document.getElementById("input_tm").value = config.resetSeconds / 60;
+  document.getElementById("input_up").value = config.updateInterval;
+  document.getElementById("input_vb").value = config.vibrateInterval;
+  document.getElementById("input_names").value = config.names.join("\n");
+
   initPlayerView();
   update();
 }
@@ -128,11 +133,13 @@ function initPlayerView() {
 function showConfig() {
   document.getElementById("main").style.display = "none";
   document.getElementById("config").style.display = "block";
+
+  // TODO: back button does not go back to correct place, need to reload
 }
 
 function hideConfig() {
-  document.getElementById("main").style.display = "block";
-  document.getElementById("config").style.display = "none";
+  //document.getElementById("main").style.display = "block";
+  //document.getElementById("config").style.display = "none";
 
   config.names = document.getElementById("input_names").value.split("\n");
   config.resetSeconds = Math.floor(document.getElementById("input_tm").value * 60);
@@ -140,17 +147,16 @@ function hideConfig() {
   config.vibrateInterval = Math.floor(document.getElementById("input_vb").value * 60);
   if ((config.resetSeconds < 0) || isNaN(config.resetSeconds)) {
     config.resetSeconds = 0;
-    document.getElementById("input_tm").value = 0;
   }
   if ((config.updateInterval < 1) || isNaN(config.updateInterval)) {
     config.updateInterval = 1;
-    document.getElementById("input_up").value = 1;
   }
   if ((config.vibrateInterval < 0) || isNaN(config.vibrateInterval)) {
     config.vibrateInterval = 0;
-    document.getElementById("input_vb").value = 0;
   }
-  // TODO: move to URL with: encodeURIComponent(JSON.stringify(config));
+
+  var json = encodeURIComponent(JSON.stringify(config));
+  window.location.search = "json=" + json;
 }
 
 function toggleView() {
@@ -273,7 +279,7 @@ function update() {
   }
 }
 </script>
-<body onload="if ('json' in urlParams) { initializeGame(); } else { showConfig(); }">
+<body onload="initializeGame(); if (!('json' in urlParams)) { showConfig(); }">
 
 <div id="main">
 <span class="game_title">Coach's Assistant</span>
@@ -326,16 +332,6 @@ function update() {
 
 <b>Players:</b><br>
 <textarea rows="10" cols="25" id="input_names">
-Player 1
-Player 2
-Player 3
-Player 4
-Player 5
-Player 6
-Player 7
-Player 8
-Player 9
-Player 10
 </textarea>
 <p>
 
