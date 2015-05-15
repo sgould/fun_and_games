@@ -7,29 +7,14 @@
 <title>Coach's Assistant</title>
 <link rel="stylesheet" href="body.css" type="text/css"/></head>
 <script type="text/javascript">
-// extract query string
-var urlParams;
-(window.onpopstate = function () {
-    var match,
-        pl = /\+/g,
-        search = /([^&=]+)=?([^&]*)/g,
-        //search = /([^?&=]+)=([^&]*)/g,
-        decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
-        query  = window.location.search.substring(1);
-
-    urlParams = {};
-    while (match = search.exec(query))
-       urlParams[decode(match[1])] = decode(match[2]);
-})();
-
 // configuration
-var config = {resetSeconds: 20 * 60, updateInterval: 5, vibrateInterval: 0, names: []};
-if ("json" in urlParams) {
-  config = JSON.parse(urlParams["json"]);
+var config = {resetSeconds: 20 * 60, updateInterval: 5, vibrateInterval: 0, 
+  gridView: false, highContrast: false, names: []};
+if (typeof(Storage) !== "undefined") {
+  if (localStorage.getItem("config") != null) {
+    config = JSON.parse(localStorage.getItem("config"));
+  }
 }
-if ((config.resetSeconds <= 0) || isNaN(config.resetSeconds)) config.resetSeconds = 20 * 60;
-if ((config.updateInterval <= 0) || isNaN(config.updateInterval)) config.updateInterval = 1;
-if ((config.vibrateInterval <= 0) || isNaN(config.vibrateInterval)) config.vibrateInterval = 0;
 if (config.names.length == 0) {
   for (var i = 0; i < 10; i++) {
     config.names.push("Player " + (i + 1));
@@ -37,8 +22,6 @@ if (config.names.length == 0) {
 }
 
 // game state (global)
-var gridView = ("gd" in urlParams ? true : false);
-var highContrast = ("hc" in urlParams ? true : false);
 var timerId = null;
 var gameSeconds = config.resetSeconds;
 var flasher = false;
@@ -82,12 +65,6 @@ function initializeGame() {
 
   initPlayerView();
   update();
-
-  if (("config" in urlParams) || !("json" in urlParams)) {
-    showConfig();
-  } else {
-    hideConfig();
-  }
 }
 
 function initPlayerView() {
@@ -98,7 +75,7 @@ function initPlayerView() {
   }
 
   // add new rows
-  if (gridView) {
+  if (config.gridView) {
     for (var i = 0; i < players.length / 2; i++) {
       var row = table.insertRow(i);
       row.insertCell(0); row.insertCell(1);
@@ -144,14 +121,7 @@ function showConfig() {
 function hideConfig() {
   document.getElementById("main").style.display = "block";
   document.getElementById("config").style.display = "none";
-}
 
-function gotoConfigPage() {
-  var json = encodeURIComponent(JSON.stringify(config));
-  window.location.search = "config&json=" + json;
-}
-
-function gotoGamePage() {
   config.names = document.getElementById("input_names").value.split("\n");
   config.resetSeconds = Math.floor(document.getElementById("input_tm").value * 60);
   config.updateInterval = Math.floor(document.getElementById("input_up").value);
@@ -166,18 +136,21 @@ function gotoGamePage() {
     config.vibrateInterval = 0;
   }
 
-  var json = encodeURIComponent(JSON.stringify(config));
-  window.location.search = "json=" + json;
+  if (typeof(Storage) !== "undefined") {
+    localStorage.setItem("config", JSON.stringify(config));
+  }
+
+  initializeGame();
 }
 
 function toggleView() {
-  gridView = !gridView;
+  config.gridView = !config.gridView;
   initPlayerView();
   update();
 }
 
 function toggleContrast() {
-  highContrast = !highContrast;
+  config.highContrast = !config.highContrast;
   update();
 }
 
@@ -261,17 +234,17 @@ function update() {
 
   // update players
   var table = document.getElementById("players_table");
-  if (gridView) {
+  if (config.gridView) {
     for (var i = 0; i < players.length; i++) {
       var c = table.rows[Math.floor(i / 2)].cells[i % 2];
       c.innerHTML = "<b>" + players[i].name + "</b><br><small>(" +
         sec2text(players[i].totalTime) + ") &nbsp; (" + sec2text(players[i].currTime) + ")</small>";
       if (players[i].active) {
         c.style.color = "black";
-        c.style.backgroundColor = (highContrast ? bgColourActiveHC : bgColourActive);
+        c.style.backgroundColor = (config.highContrast ? bgColourActiveHC : bgColourActive);
       } else {
         c.style.color = "grey";
-        c.style.backgroundColor = (highContrast ? bgColourInactiveHC : bgColourInactive);
+        c.style.backgroundColor = (config.highContrast ? bgColourInactiveHC : bgColourInactive);
       }
     }
   } else {
@@ -279,10 +252,10 @@ function update() {
       var row = table.rows[i + 1];
       if (players[i].active) {
         row.style.color = "black";
-        row.style.backgroundColor = (highContrast ? bgColourActiveHC : bgColourActive);
+        row.style.backgroundColor = (config.highContrast ? bgColourActiveHC : bgColourActive);
       } else {
         row.style.color = "grey";
-        row.style.backgroundColor = (highContrast ? bgColourInactiveHC : bgColourInactive);
+        row.style.backgroundColor = (config.highContrast ? bgColourInactiveHC : bgColourInactive);
       }
       row.cells[1].innerHTML = sec2text(players[i].totalTime);
       row.cells[2].innerHTML = sec2text(players[i].currTime);
@@ -308,7 +281,7 @@ function update() {
 <small style="color:#7f7f7f;">
 [tap name on/off; tap header to re-sort]
 <br>
-<span onClick="gotoConfigPage();">(&olarr; configure)</span>
+<span onClick="showConfig();">(&olarr; configure)</span>
 &nbsp;
 <span onClick="toggleView();">(&sharp; grid/list)</span>
 &nbsp;
@@ -338,20 +311,25 @@ function update() {
 <td><input type="text" id="input_vb" value="0" size="3"> minutes</td>
 </tr>
 </table>
-</center>
 <p>
 
-<b>Players:</b><br>
+<table>
+<tr><td style="text-align:center;"><b>Players:</b></td></tr>
+<tr><td style="text-align:center;">
 <textarea rows="10" cols="25" id="input_names">
 </textarea>
-<p>
-
-<a href="#" class="blue wide_button" id="update_button" onClick="gotoGamePage(); return true;">game on</a>
-<p>
+</td></tr>
+<tr><td style="text-align:right;">
 <small style="color:#7f7f7f;">
-<b>Tip:</b> After clicking the "game on" button bookmark the page<br>
-for quick access to this configuration in the future.
+<span onClick="document.getElementById('input_names').value = '';">(clear names)</span>
 </small>
+</td></tr>
+</table>
+<p>
+</center>
+
+<a href="#" class="blue wide_button" id="update_button" onClick="hideConfig();">game on</a>
+<p>
 
 </div>
 
