@@ -25,7 +25,8 @@ if (config.names.length == 0) {
 var timerId = null;
 var gameSeconds = config.resetSeconds;
 var flasher = false;
-players = [];
+var players = [];
+var helpOrigin = null;
 
 var bgColourActive = "#d0ffd0";
 var bgColourInactive = "#ffd0d0";
@@ -117,12 +118,31 @@ function showConfig() {
   document.getElementById("main").style.display = "none";
   document.getElementById("config").style.display = "block";
   document.getElementById("config_back_button").style.display = "block";
+  document.getElementById("help").style.display = "none";
 }
 
-function hideConfig() {
+function showGame() {
   document.getElementById("main").style.display = "block";
   document.getElementById("config").style.display = "none";
   document.getElementById("config_back_button").style.display = "none";
+  document.getElementById("help").style.display = "none";
+}
+
+function showHelp(origin) {
+  helpOrigin = origin;
+
+  document.getElementById("main").style.display = "none";
+  document.getElementById("config").style.display = "none";
+  document.getElementById("help").style.display = "block";
+}
+
+function hideHelp() {
+  if (helpOrigin == "game") {
+    showGame();
+  } else {
+    document.getElementById("config").style.display = "block";
+    document.getElementById("help").style.display = "none";
+  }
 }
 
 function onGameOn() {
@@ -145,7 +165,7 @@ function onGameOn() {
     localStorage.setItem("config", JSON.stringify(config));
   }
 
-  hideConfig();
+  showGame();
   initializeGame();
 }
 
@@ -292,6 +312,8 @@ function update() {
 <span onClick="toggleView();">(&sharp; grid/list)</span>
 &nbsp;
 <span onClick="toggleContrast();">(&square; contrast)</span>
+&nbsp;
+<span onClick="showHelp('game');">(? help)</span>
 </small>
 <br>
 </center>
@@ -327,6 +349,8 @@ function update() {
 </td></tr>
 <tr><td style="text-align:right;">
 <small style="color:#7f7f7f;">
+<span onClick="showHelp('config');">(? help)</span>
+&nbsp;
 <span onClick="document.getElementById('input_names').value = '';">(clear names)</span>
 </small>
 </td></tr>
@@ -337,9 +361,54 @@ function update() {
 <a href="#" class="blue wide_button" id="update_button" onClick="onGameOn();">game on</a>
 <p>
 <div id="config_back_button" style="display:none;">
-<a href="#" class="red wide_button" onClick="hideConfig();">cancel</a>
+<a href="#" class="red wide_button" onClick="showGame();">cancel</a>
 </div>
 <p>
+
+</div>
+
+<div id="help" class="help" style="display:none;">
+<span class="game_title">Coach's Assistant Help</span>
+<p>
+<b>Coach's Assistant</b> is a simple-to-use app for managing player
+substitutions during amatuer sports matches. The best thing about
+<b>Coach's Assistant</b> is that it is free and does not need you
+to install anything (it runs in the browser on your phone).
+<p>
+
+To use the app set the game parameters, including game time, update
+interval, and players's names, on the <i>configuration screen</i>. A
+vibration alert can be set to remind you to check substitutions. Once
+you have entered the game details click the <b>game on</b> button and
+you're ready to go. (Details will be saved in your browser for your
+next game).
+<p>
+
+The main <i>game screen</i> shows a countdown game clock and list of
+players. Along side each player's name is the total time played and
+the last time the player was substituted (either on or off). Tap on
+the player's name to substitute on or off. You can change
+between <i>list view</i> and <i>grid view</i> by clicking the
+<b>(&sharp; grid/list)</b> button. On bright days you may want to
+change the contrast by clicking the <b>(&square; contrast)</b> button.
+<p>
+
+In <i>list view</i> you can re-sort the players by tapping on the
+column headers. For example, tap on <b>Time Player</b> to sort the
+list by the amount of time each player has been on the field. This
+allows you to quickly determine who should be substituted next.
+<p>
+
+You can reconfigure the game at anytime by pressing the <b>(&olarr;
+configure)</b> button. This will take you back to the <i>configure
+screen</i>. Changing any configuration options will restart the
+game. If you do not want to restart the game, simply press
+the <b>back</b> button to go back to the <i>game screen</i>.
+<p>
+
+Good luck to your team and have fun.
+<p>
+<a href="#" class="red wide_button" onClick="hideHelp();">back</a>
 
 </div>
 
