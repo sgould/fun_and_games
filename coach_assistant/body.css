@@ -102,5 +102,6 @@ body {
 }
 
 .help {
+  text-align:justify;
   font-size:small;
 }
