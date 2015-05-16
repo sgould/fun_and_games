@@ -60,6 +60,25 @@ body {
   text-decoration:none;
 }
 
+.small_button {
+  -moz-border-radius:8px;
+  -webkit-border-radius:8px;
+  border-radius:8px;
+  display:inline-block;
+  cursor:pointer;
+  font-family:Arial;
+  font-size:12px;
+  border:1px solid #7f7f7f;
+  padding:1px 8px;
+  min-width:50px;
+  text-decoration:none;
+}
+
+.small_button:active {
+  position:relative;
+  top:1px;
+}
+
 .green {
   background-color:#44c767;
   border:1px solid #18ab29;

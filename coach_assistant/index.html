@@ -11,8 +11,8 @@
 var config = {version: 100, resetSeconds: 20 * 60, updateInterval: 5, vibrateInterval: 0, 
   gridView: false, highContrast: false, names: []};
 if (typeof(Storage) !== "undefined") {
-  if (localStorage.getItem("config") != null) {
-    config = JSON.parse(localStorage.getItem("config"));
+  if (localStorage.getItem("subonsuboff:config") != null) {
+    config = JSON.parse(localStorage.getItem("subonsuboff:config"));
   }
 }
 if (config.names.length == 0) {
@@ -162,7 +162,7 @@ function onGameOn() {
   }
 
   if (typeof(Storage) !== "undefined") {
-    localStorage.setItem("config", JSON.stringify(config));
+    localStorage.setItem("subonsuboff:config", JSON.stringify(config));
   }
 
   showGame();
@@ -306,14 +306,14 @@ function update() {
 </table>
 <small style="color:#7f7f7f;">
 [tap name on/off; tap header to re-sort]
-<br>
-<span onClick="showConfig();">(&olarr; configure)</span>
+<br><br>
+<span class="small_button" onClick="showConfig();">&olarr; configure</span>
 &nbsp;
-<span onClick="toggleView();">(&sharp; grid/list)</span>
+<span class="small_button" onClick="toggleView();">&sharp; grid/list</span>
 &nbsp;
-<span onClick="toggleContrast();">(&square; contrast)</span>
+<span class="small_button" onClick="toggleContrast();">&square; contrast</span>
 &nbsp;
-<span onClick="showHelp('game');">(? help)</span>
+<span class="small_button" onClick="showHelp('game');">? help</span>
 </small>
 <br>
 </center>
@@ -347,11 +347,11 @@ function update() {
 <textarea rows="10" cols="25" id="input_names">
 </textarea>
 </td></tr>
-<tr><td style="text-align:right;">
+<tr><td style="text-align:center;">
 <small style="color:#7f7f7f;">
-<span onClick="showHelp('config');">(? help)</span>
+<span class="small_button" onClick="document.getElementById('input_names').value = '';">clear names</span>
 &nbsp;
-<span onClick="document.getElementById('input_names').value = '';">(clear names)</span>
+<span class="small_button" onClick="showHelp('config');">? help</span>
 </small>
 </td></tr>
 </table>
@@ -372,13 +372,13 @@ function update() {
 <p>
 <div class="help">
 <b>Coach's Assistant</b> is a simple-to-use app for managing player
-substitutions in amatuer sports. It is free and does not need you
-to install any software (it runs in the browser on your phone).
+substitutions in amatuer sports. Best of all it's free and you do not
+need to install any software (it runs in the browser on your phone).
 <p>
 
 To use the app set the game parameters, including game time, update
-interval, and players's names, on the <i>configuration screen</i>. A
-vibration alert can also be set to remind you to check
+interval, and players' names, on the <i>configuration screen</i>. A
+vibrate alert can also be set to remind you to check
 substitutions. Once the game details are entered click
 <b>game on</b> and you're ready to go. (Details will be saved in your
 browser for future games).
