@@ -10,9 +10,11 @@
 // configuration
 var config = {version: 100, resetSeconds: 20 * 60, updateInterval: 5, vibrateInterval: 0, 
   gridView: false, highContrast: false, names: []};
+var startOnGameScreen = false;
 if (typeof(Storage) !== "undefined") {
   if (localStorage.getItem("subonsuboff:config") != null) {
     config = JSON.parse(localStorage.getItem("subonsuboff:config"));
+    startOnGameScreen = true;
   }
 }
 if (config.names.length == 0) {
@@ -289,7 +291,7 @@ function update() {
   }
 }
 </script>
-<body onload="initializeGame();">
+<body onload="initializeGame(); if (startOnGameScreen) { showGame(); }">
 
 <div id="main" style="display:none;">
 <span class="game_title">Coach's Assistant</span>
