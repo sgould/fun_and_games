@@ -101,7 +101,9 @@ function initPlayerView() {
       var th = document.createElement("th");
       var heading = columnHeadings[i];
       if (sortingBy.field == i) {
-        heading += (sortingBy.persistent ? " &#x21a1;" : " &#x2193;");
+        heading += (sortingBy.persistent ? " <small>&#x21a7;</small>" : " <small>&#x2193;</small>");
+      } else {
+        heading += " <small style='color:#7f7f7f;'>&#x21e3;<small>";
       }
       th.innerHTML = heading;
       var fcn = "function(){sortBy(" + i + "); return true;}";
