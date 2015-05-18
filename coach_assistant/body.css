@@ -1,4 +1,3 @@
-
 body {
   font-family:Arial;
   text-align:center;
@@ -110,7 +109,7 @@ body {
 .players_table th {
   font-weight:bold;
   background-color:#dfdfdf;
-  width:108px;
+  width:120px;
 }
 
 .players_table td {
