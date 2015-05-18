@@ -155,6 +155,14 @@ function hideHelp() {
   }
 }
 
+function onConfigure() {
+  document.getElementById("input_tm").value = config.resetSeconds / 60;
+  document.getElementById("input_up").value = config.updateInterval;
+  document.getElementById("input_vb").value = config.vibrateInterval;
+  document.getElementById("input_names").value = config.names.join("\n");
+  showConfig();
+}
+
 function onGameOn() {
   config.names = document.getElementById("input_names").value.split("\n");
   config.resetSeconds = Math.floor(document.getElementById("input_tm").value * 60);
@@ -333,7 +341,7 @@ function update() {
 <small style="color:#7f7f7f;">
 [tap name on/off; tap header to re-sort]
 <br><br>
-<span class="small_button" onClick="showConfig();">&olarr; configure</span>
+<span class="small_button" onClick="onConfigure();">&olarr; configure</span>
 &nbsp;
 <span class="small_button" onClick="toggleView();">&sharp; grid/list</span>
 &nbsp;
