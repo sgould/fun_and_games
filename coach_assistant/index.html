@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="body.css" type="text/css"/></head>
 <script type="text/javascript">
 // configuration
-var config = {version: 100, resetSeconds: 20 * 60, updateInterval: 5, vibrateInterval: 0, 
+var config = {version: 100, resetSeconds: 20 * 60, updateInterval: 1, vibrateInterval: 0, 
   gridView: false, highContrast: false, names: []};
 var startOnGameScreen = false;
 if (typeof(Storage) !== "undefined") {
@@ -128,6 +128,13 @@ function showConfig() {
   document.getElementById("main").style.display = "none";
   document.getElementById("config").style.display = "block";
   document.getElementById("config_back_button").style.display = "block";
+  document.getElementById("help").style.display = "none";
+}
+
+function showConfigStart() {
+  document.getElementById("main").style.display = "none";
+  document.getElementById("config").style.display = "block";
+  document.getElementById("config_back_button").style.display = "none";
   document.getElementById("help").style.display = "none";
 }
 
@@ -323,7 +330,7 @@ function update() {
   }
 }
 </script>
-<body onload="initializeGame(); if (startOnGameScreen) { showGame(); }">
+<body onload="initializeGame(); if (startOnGameScreen) { showGame(); } else { showConfigStart(); }">
 
 <div id="main" style="display:none;">
 <span class="game_title">Coach's Assistant</span>
@@ -354,7 +361,7 @@ function update() {
 <p>
 </div>
 
-<div id="config" style="display:block;">
+<div id="config" style="display:none;">
 <span class="game_title">Coach's Assistant Configuration</span>
 <p>
 
@@ -376,7 +383,7 @@ function update() {
 <p>
 
 <table>
-<tr><td style="text-align:center;"><b>Players:</b></td></tr>
+<tr><td style="text-align:center;"><b>Players' Names:</b></td></tr>
 <tr><td style="text-align:center;">
 <textarea rows="10" cols="25" id="input_names">
 </textarea>
