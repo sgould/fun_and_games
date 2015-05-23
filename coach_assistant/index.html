@@ -186,8 +186,12 @@ function onGameOn() {
     config.vibrateInterval = 0;
   }
 
-  if (typeof(Storage) !== "undefined") {
-    localStorage.setItem("subonsuboff:config", JSON.stringify(config));
+  try {
+    if (typeof(Storage) !== "undefined") {
+      localStorage.setItem("subonsuboff:config", JSON.stringify(config));
+    }
+  } catch(err) {
+    // do nothing
   }
 
   showGame();
