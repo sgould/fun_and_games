@@ -1,0 +1,238 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<title>Stephen Gould---Monty Hall Problem</title>
+<link rel="stylesheet" href="body.css" type="text/css"/>
+<script type="text/javascript">
+<!-- variables -->
+var gameState = 0;
+var prizeDoor = Math.floor((Math.random() * 3) + 1);
+var initialDoor = 0;
+var selectedDoor = 0;
+var revealedDoor = 0;
+<!-- preload -->
+var imgs = new Array();
+function preload() {
+    imgs[0] = new Image(); imgs[0].src="images/door.png";
+    imgs[1] = new Image(); imgs[1].src="images/selected_door.png";
+    imgs[2] = new Image(); imgs[2].src="images/goat.png";
+    imgs[3] = new Image(); imgs[3].src="images/car.jpg";
+    imgs[4] = new Image(); imgs[4].src="images/correct_car.png";
+    imgs[5] = new Image(); imgs[5].src="images/wrong_goat.png";
+}
+preload();
+<!-- index2name -->
+function index2name(index) {
+    switch (index) {
+        case 1: return "one"; break;
+        case 2: return "two"; break;
+        case 3: return "three"; break;
+    }
+    return "";
+}
+<!-- restart -->
+function restart() {
+    gameState = 0;
+    prizeDoor = Math.floor((Math.random() * 3) + 1);
+    initialDoor = 0;
+    selectedDoor = 0;
+    revealedDoor = 0;
+    document.getElementById("one").src="images/door.png";
+    document.getElementById("two").src="images/door.png";
+    document.getElementById("three").src="images/door.png";
+    document.getElementById("spacer").style.display = "block";
+    document.getElementById("reveal_controls").style.display = "none";
+    document.getElementById("open_controls").style.display = "none";
+    document.getElementById("restart_controls").style.display = "none";
+}
+<!-- reveal -->
+function reveal() {
+    gameState = 2;
+    initialDoor = selectedDoor;
+    if (selectedDoor == prizeDoor) {
+        revealedDoor = Math.floor((Math.random() * 2) + 1);
+        if (prizeDoor == 1) {
+            revealedDoor = revealedDoor + 1;
+        } else if ((prizeDoor == 2) && (revealedDoor == 2)) {
+            revealedDoor = 3;
+        }
+    } else {
+        if ((prizeDoor != 1) && (selectedDoor != 1)) {
+            revealedDoor = 1;
+        } else if ((prizeDoor != 2) && (selectedDoor != 2)) {
+            revealedDoor = 2;
+        } else {
+            revealedDoor = 3;
+        }
+    }
+
+    document.getElementById(index2name(revealedDoor)).src="images/goat.png";
+    document.getElementById("spacer").style.display = "none";
+    document.getElementById("reveal_controls").style.display = "none";
+    document.getElementById("open_controls").style.display = "block";
+
+    document.getElementById("initial_door_2").innerHTML = initialDoor;
+    document.getElementById("switch_button").innerHTML = "switch";
+}
+<!-- switch -->
+function switchDoor() {
+    if ((selectedDoor != 1) && (revealedDoor != 1)) {
+        doorClick(1);
+    } else if ((selectedDoor != 2) && (revealedDoor != 2)) {
+        doorClick(2);
+    } else {
+        doorClick(3);
+    }
+}
+<!-- open -->
+function openDoor() {
+    gameState = 3;
+    if (selectedDoor == prizeDoor) {
+        document.getElementById("one").src="images/goat.png";
+        document.getElementById("two").src="images/goat.png";
+        document.getElementById("three").src="images/goat.png";
+        document.getElementById(index2name(prizeDoor)).src="images/correct_car.png";
+    } else {
+        document.getElementById(index2name(prizeDoor)).src="images/car.jpg";
+        document.getElementById(index2name(selectedDoor)).src="images/wrong_goat.png";
+    }
+    document.getElementById("reveal_controls").style.display = "none";
+    document.getElementById("open_controls").style.display = "none";
+    document.getElementById("restart_controls").style.display = "block";
+
+    document.getElementById("initial_door").innerHTML = initialDoor;
+    document.getElementById("prize_door").innerHTML = prizeDoor;
+    if (selectedDoor == initialDoor) {
+        document.getElementById("switch_stay").innerHTML = "stayed";
+    } else {
+        document.getElementById("switch_stay").innerHTML = "switched";
+    }
+    if (selectedDoor == prizeDoor) {
+        document.getElementById("win_lose").innerHTML = "won";
+    } else {
+        document.getElementById("win_lose").innerHTML = "lost";
+    }
+}
+<!-- door click -->
+function doorClick(id) {
+    if ((gameState == 0) || (gameState == 1)) {
+        gameState = 1;
+        selectedDoor = id;
+        document.getElementById("one").src="images/door.png";
+        document.getElementById("two").src="images/door.png";
+        document.getElementById("three").src="images/door.png";
+        document.getElementById(index2name(selectedDoor)).src="images/selected_door.png";
+        document.getElementById("spacer").style.display = "none";
+        document.getElementById("reveal_controls").style.display = "block";
+    } else if (gameState == 2) {
+        if ((id == revealedDoor) || (id == selectedDoor)) {
+            return;
+        }
+        document.getElementById(index2name(selectedDoor)).src="images/door.png";
+        selectedDoor = id;
+        document.getElementById(index2name(selectedDoor)).src="images/selected_door.png";
+
+        if (selectedDoor == initialDoor) {
+            document.getElementById("switch_button").innerHTML = "switch";
+        } else {
+            document.getElementById("switch_button").innerHTML = "switch back";
+        }
+    }
+}
+</script>
+
+</head>
+
+<body topmargin="0" leftmargin="0" bgcolor="#ffffff" name="top">
+
+<div class="linkbar">
+<a href="index.html">home</a> &nbsp;
+</div>
+
+<div class="header">
+<span class="sectionTitle" style="font-size:18pt">Monty Hall Problem</span><br>
+<p>
+
+<!-- problem statement -->
+
+The Monty Hall Problem is a problem in probabilistic reasoning. It is
+often stated as follows.
+
+<table align="center" width="80%">
+<tr><td>
+<i>Suppose you're on a game show, and you're given the choice of three
+doors: Behind one door is a car; behind the others, goats. You pick a
+door, say No. 1, and the host, who knows what's behind the doors,
+opens another door, say No. 3, which has a goat. He then says to you,
+"Do you want to pick door No. 2?" Is it to your advantage to switch
+your choice?</i>
+</td></tr>
+<tr><td align="right">
+<small>[Whitaker/vos Savant 1990]</small>
+</td></tr>
+</table>
+
+You can read more about the Monty Hall Problem in a great
+<a href="http://en.wikipedia.org/wiki/Monty_hall_problem">Wikipedia article</a>.
+
+</div>
+<div class="body">
+<span class="sectionTitle">Play</span><br>
+
+<table align="center">
+<!-- doors -->
+<tr><td>
+<table>
+<tr height="380px">
+<td>
+<a href="#" onclick="doorClick(1); return false;"><img width="280px" src="images/door.png" id="one"></a>
+</td>
+<td>
+<a href="#" onclick="doorClick(2); return false;"><img width="280px" src="images/door.png" id="two"></a>
+</td>
+<td>
+<a href="#" onclick="doorClick(3); return false;"><img width="280px" src="images/door.png" id="three"></a>
+</td>
+</tr>
+<tr>
+<td><center><b>Door No. 1</b></center></td>
+<td><center><b>Door No. 2</b></center></td>
+<td><center><b>Door No. 3</b></center></td>
+</tr>
+</table>
+</td></tr>
+
+<!-- space -->
+<tr><td>&nbsp;</td></tr>
+
+<!-- controls -->
+<tr><td align="right">
+<div style="display: block;" id="spacer">
+&nbsp;
+</div>
+<div style="display: none;" id="reveal_controls">
+<a href="#" onclick="restart(); return false;"><b>restart</b></a> or
+<a href="#" onclick="reveal(); return false;"><b>reveal</b></a>
+</div>
+<div style="display: none;" id="open_controls">
+You initialy chose door no. <span id="initial_door_2">?</span>. You can now
+<a href="#" onclick="switchDoor(); return false;"><b><span id="switch_button">switch or switch back</span></b></a> or
+<a href="#" onclick="openDoor(); return false;"><b>open</b></a>.
+</div>
+<div style="display: none;" id="restart_controls">
+You initialy chose door no. <span id="initial_door">?</span>, the
+car was behind door no. <span id="prize_door">?</span>.
+You <b><span id="switch_stay">switched or stayed</span></b>
+and <b><span id="win_lose">won or lost</span></b>!
+<a href="#" onclick="restart(); return false;">(<b>restart</b>)</a>
+</div>
+</td></tr>
+</table>
+</div>
+
+<div class="copyright">
+Copyright &copy; 2014--2015, Stephen Gould.
+</div>
+
+</body>
+</html>
