@@ -24,8 +24,9 @@ if (config.names.length == 0) {
 }
 
 // game state (global)
+var timerResolution = 500;
 var timerId = null;
-var gameSeconds = config.resetSeconds;
+var gameMilliSeconds = 1000 * config.resetSeconds;
 var flasher = false;
 var players = [];
 var helpOrigin = null;
@@ -37,7 +38,8 @@ var bgColourInactive = "#ffd0d0";
 var bgColourActiveHC = "#f0f0f0";
 var bgColourInactiveHC = "#000000";
 
-function sec2text(s) {
+function sec2text(ms) {
+  var s = ms / 1000;
   var mm = Math.floor(s / 60);
   if (mm < 10) mm = '0' + mm;
   var ss = s % 60;
@@ -54,7 +56,7 @@ function initializeGame() {
     timerId = null;
     flasher = false;
   }
-  gameSeconds = config.resetSeconds;
+  gameMilliSeconds = 1000 * config.resetSeconds;
   sortingBy = {field: -1, persistent: false};
 
   players = [];
@@ -220,7 +222,7 @@ function clockStartStop() {
     clearInterval(timerId)
     timerId = null;
   } else {
-    timerId = setInterval(onTimer, 1000);
+    timerId = setInterval(onTimer, timerResolution);
   }
   update();
 }
@@ -250,19 +252,19 @@ function sortBy(field) {
 
 function onTimer() {
   // game clock
-  gameSeconds -= 1;
-  if ((config.vibrateInterval > 0) && (gameSeconds % config.vibrateInterval == 0)) {
+  gameMilliSeconds -= timerResolution;
+  if ((config.vibrateInterval > 0) && ((gameMilliSeconds / 1000) % config.vibrateInterval == 0)) {
     navigator.vibrate = navigator.vibrate || navigator.webkitVibrate || navigator.mozVibrate || navigator.msVibrate;
     navigator.vibrate([500]);
   }
-  if (gameSeconds < 0) gameSeconds = 0;
+  if (gameMilliSeconds < 0) gameMilliSeconds = 0;
   flasher = !flasher;
 
   // players
   for (var i = 0; i < players.length; i++) {
-    players[i].currTime += 1;
+    players[i].currTime += timerResolution;
     if (players[i].active)
-      players[i].totalTime += 1;
+      players[i].totalTime += timerResolution;
   }
 
   if (sortingBy.persistent) {
@@ -280,12 +282,12 @@ function onTimer() {
 
 function update() {
   // update game clock
+  var gameSeconds = Math.floor(gameMilliSeconds / 1000);
   var mm = Math.floor(gameSeconds / 60);
   if (mm < 10) mm = '0' + mm;
   var ss = gameSeconds % 60;
   if (ss < 10) ss = '0' + ss;
-  document.getElementById("game_minutes").innerHTML = mm;
-  document.getElementById("game_seconds").innerHTML = ss;
+  document.getElementById("game_clock").innerHTML = mm + ":" + ss;
 
   if (timerId == null) {
     document.getElementById("game_timer").style.color = "black";
@@ -296,7 +298,7 @@ function update() {
     document.getElementById("start_stop_button").className = "red button";
     document.getElementById("start_stop_button").innerHTML = "stop";
     document.getElementById("reset_button").className = "disabled_button";
-    if ((gameSeconds == 0) && flasher) {
+    if ((gameMilliSeconds == 0) && flasher) {
       document.getElementById("game_timer").style.color = "#fff0f0";
     } else {
       document.getElementById("game_timer").style.color = "black";
@@ -340,7 +342,7 @@ function update() {
 <span class="game_title">Coach's Assistant</span>
 <br>
 <div class="game_timer" id="game_timer">
-<span id="game_minutes">20</span>:<span id="game_seconds">00</span>
+<span id="game_clock">20:00</span>
 </div>
 <a href="#" class="green button" id="start_stop_button" onClick="clockStartStop(); return true;">start</a>
 <a href="#" class="red button" id="reset_button" onClick="clockReset(); return true;">reset</a>
@@ -454,7 +456,8 @@ game. If you do not want to restart the game, simply press the
 using your browser's navigation buttons).
 <p>
 
-<center>Good luck and have fun.</center>
+<center>Practice using the app before a game to become familiar with
+its features. Good luck and have fun.</center>
 </div>
 
 <p>
