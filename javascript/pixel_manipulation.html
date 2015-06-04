@@ -1,0 +1,46 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="author" content="Stephen Gould"/>
+<title>Pixel Manipulation Example</title>
+<script type="text/javascript">
+function init() {
+    var canvas = document.getElementById("canvas");
+    var context = canvas.getContext("2d");
+    imageData = context.createImageData(canvas.width, canvas.height);
+
+    for (var y = 0; y < canvas.height; y++) {
+        for (var x = 0; x < canvas.width; x++) {
+            var rgb = [Math.random() * 256 | 0, Math.random() * 256 | 0, Math.random() * 256 | 0];
+            setPixel(imageData, x, y, rgb);
+        }
+    }
+
+    context.putImageData(imageData, 0, 0);
+}
+
+function getPixel(imageData, x, y) {
+    var indx = 4 * (y * imageData.width + x);
+    var rgb = [imageData.data[indx + 0], imageData.data[indx + 1], imageData.data[indx + 2]];
+    return rgb;
+}
+
+function setPixel(imageData, x, y, rgb) {
+    var indx = 4 * (y * imageData.width + x);
+    imageData.data[indx + 0] = rgb[0];
+    imageData.data[indx + 1] = rgb[1];
+    imageData.data[indx + 2] = rgb[2];
+    imageData.data[indx + 3] = 255;
+}
+</script>
+</head>
+
+<body onload="init()">
+
+Canvas:<br>
+<canvas id="canvas" width="320" height="240"></canvas>
+
+</body>
+</html>
