@@ -1,11 +1,14 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <meta name="author" content="Stephen Gould"/>
 <title>Coach's Assistant</title>
-<link rel="stylesheet" href="body.css" type="text/css"/></head>
+<link rel="stylesheet" href="body.css" type="text/css"/>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="apple-touch-icon.png">
+
 <script type="text/javascript">
 // configuration
 var config = {version: 100, resetSeconds: 20 * 60, updateInterval: 1, vibrateInterval: 0, 
@@ -336,6 +339,8 @@ function update() {
   }
 }
 </script>
+</head>
+
 <body onload="initializeGame(); if (startOnGameScreen) { showGame(); } else { showConfigStart(); }">
 
 <div id="main" style="display:none;">
