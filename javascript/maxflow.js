@@ -252,7 +252,6 @@ function maxFlowBK(g)
     while (active.length > 0) {
         // expand trees
         var u = active.shift(); // pop and return front
-        console.log("Processing node " + u);
         var path = [];
         if (g.cut[u] == MAX_FLOW_SOURCE) {
             for (var i = 0; i < g.nodes[u].length; i++) {
@@ -271,14 +270,12 @@ function maxFlowBK(g)
             }
         } else {
             for (var i = 0; i < g.nodes[u].length; i++) {
-                console.log(g.nodes[u].length);
-                console.log("[" + u + "][" + i + "].node = " + g.nodes[u][i].node);
                 var v = g.nodes[u][i].node;
                 var ri = g.nodes[u][i].rindx;
                 if (g.nodes[v][ri].w > 0.0) {
                     if (g.cut[v] == MAX_FLOW_FREE) {
                         g.cut[v] = MAX_FLOW_TARGET;
-                        parents[v] = i;
+                        parents[v] = ri;
                         active.push(v);
                     } else if (g.cut[v] == MAX_FLOW_SOURCE) {
                         // found augmenting path (node, neighbour index)
@@ -346,7 +343,25 @@ function maxFlowBK(g)
 
         // adopt orphans
         // TODO
-        break;
+
+// BEGIN DEBUGGING
+    parents = []; 
+    active = [];
+    for (var u = 0; u < g.nodes.length; u++) {
+        if (g.sourceEdges[u] > 0.0) {
+            g.cut[u] = MAX_FLOW_SOURCE;
+            parents.push(MAX_FLOW_TERMINAL);
+            active.push(u);
+        } else if (g.targetEdges[u] > 0.0) {
+            g.cut[u] = MAX_FLOW_TARGET;
+            parents.push(MAX_FLOW_TERMINAL);
+            active.push(u);
+        } else {
+            parents.push(MAX_FLOW_FREE);
+            g.cut[u] = MAX_FLOW_FREE;
+        }
+    }
+/// END DEBUGGING
     }
 
 
