@@ -8,6 +8,11 @@ const MAX_FLOW_TERMINAL = -1;
 const MAX_FLOW_TARGET = 0;
 const MAX_FLOW_SOURCE = 1;
 
+function maxFlowAssert(b, msg)
+{
+    if (b) throw new Error(msg);
+}
+
 function maxFlowInit()
 {
     var g = {};
@@ -231,7 +236,7 @@ function maxFlowBK(g)
     maxFlowPreAugment(g);
 
     // initialize search trees
-    var parents = []; 
+    var parents = [];
     var active = [];
     for (var u = 0; u < g.nodes.length; u++) {
         if (g.sourceEdges[u] > 0.0) {
@@ -251,7 +256,7 @@ function maxFlowBK(g)
     // find augmenting paths
     while (active.length > 0) {
         // expand trees
-        var u = active.shift(); // pop and return front
+        var u = active[0];
         var path = [];
         if (g.cut[u] == MAX_FLOW_SOURCE) {
             for (var i = 0; i < g.nodes[u].length; i++) {
@@ -286,36 +291,37 @@ function maxFlowBK(g)
             }
         }
 
-        if (path.length == 0) continue;
+        if (path.length == 0) { active.shift(); continue; }
 
         // augment path
-        console.log("Found augmenting path");
+        //console.log("Found augmenting path: " + path[0] + ", " + g.nodes[path[0]][path[1]].node);
         var c = g.nodes[path[0]][path[1]].w;
-        console.log("edge(" + path[0] + " --> " + g.nodes[path[0]][path[1]].node + ") = " + c);
+        //console.log("edge(" + path[0] + " --> " + g.nodes[path[0]][path[1]].node + ") = " + c);
         // backtrack
         u = path[0];
         while (parents[u] != MAX_FLOW_TERMINAL) {
             var v = g.nodes[u][parents[u]].node;
             var ri = g.nodes[u][parents[u]].rindx;
-            console.log("edge(" + v + " --> " + u + ") = " + g.nodes[v][ri].w);
+            //console.log("edge(" + v + " --> " + u + ") = " + g.nodes[v][ri].w);
             c = Math.min(c, g.nodes[v][ri].w);
             u = v;
         }
-        console.log("edge(s --> " + u + ") = " + g.sourceEdges[u]);
+        //console.log("edge(s --> " + u + ") = " + g.sourceEdges[u]);
         c = Math.min(c, g.sourceEdges[u]);
 
         // forward track
         u = g.nodes[path[0]][path[1]].node;
         while (parents[u] != MAX_FLOW_TERMINAL) {
             var v = g.nodes[u][parents[u]].node;
-            console.log("edge(" + u + " --> " + v + ") = " + g.nodes[u][parents[u]].w);
+            //console.log("edge(" + u + " --> " + v + ") = " + g.nodes[u][parents[u]].w);
             c = Math.min(c, g.nodes[u][parents[u]].w);
             u = v;
         }
-        console.log("edge(" + u + " --> t) = " + g.targetEdges[u]);
+        //console.log("edge(" + u + " --> t) = " + g.targetEdges[u]);
         c = Math.min(c, g.targetEdges[u]);
 
-        console.log("Residual capacity is " + c);
+        //console.log("residual capacity is " + c);
+        maxFlowAssert(c == 0.0, "zero capacity augmenting path");
 
         orphans = [];
         u = path[0];
@@ -327,43 +333,110 @@ function maxFlowBK(g)
             var ri = g.nodes[u][parents[u]].rindx;
             g.nodes[v][ri].w -= c;
             g.nodes[u][parents[u]].w += c;
+            if (g.nodes[v][ri].w == 0.0) {
+                orphans.push(u);
+            }
             u = v;
         }
         g.sourceEdges[u] -= c;
+        if (g.sourceEdges[u] == 0.0) {
+            orphans.push(u);
+        }
         u = g.nodes[path[0]][path[1]].node;
         while (parents[u] != MAX_FLOW_TERMINAL) {
             var v = g.nodes[u][parents[u]].node;
             var ri = g.nodes[u][parents[u]].rindx;
             g.nodes[u][parents[u]].w -= c;
             g.nodes[v][ri].w += c;
+            if (g.nodes[u][parents[u]].w == 0.0) {
+                orphans.push(u);
+            }
             u = v;
         }
         g.targetEdges[u] -= c;
+        if (g.targetEdges[u] == 0.0) {
+            orphans.push(u);
+        }
+
         g.flowValue += c;
 
         // adopt orphans
-        // TODO
+        //console.log("orphans: " + orphans);
 
 // BEGIN DEBUGGING
-    parents = []; 
-    active = [];
-    for (var u = 0; u < g.nodes.length; u++) {
-        if (g.sourceEdges[u] > 0.0) {
-            g.cut[u] = MAX_FLOW_SOURCE;
-            parents.push(MAX_FLOW_TERMINAL);
-            active.push(u);
-        } else if (g.targetEdges[u] > 0.0) {
-            g.cut[u] = MAX_FLOW_TARGET;
-            parents.push(MAX_FLOW_TERMINAL);
-            active.push(u);
-        } else {
-            parents.push(MAX_FLOW_FREE);
-            g.cut[u] = MAX_FLOW_FREE;
+        if (false && (orphans.length > 0)) {
+            parents = [];
+            active = [];
+            for (var u = 0; u < g.nodes.length; u++) {
+                if (g.sourceEdges[u] > 0.0) {
+                    g.cut[u] = MAX_FLOW_SOURCE;
+                    parents.push(MAX_FLOW_TERMINAL);
+                    active.push(u);
+                } else if (g.targetEdges[u] > 0.0) {
+                    g.cut[u] = MAX_FLOW_TARGET;
+                    parents.push(MAX_FLOW_TERMINAL);
+                    active.push(u);
+                } else {
+                    parents.push(MAX_FLOW_FREE);
+                    g.cut[u] = MAX_FLOW_FREE;
+                }
+            }
+
+            orphans = [];
+        }
+/// END DEBUGGING
+        
+        for (var i = 0; i < orphans.length; i++) {
+            parents[orphans[i]] = MAX_FLOW_TERMINAL;
+        }
+
+        while (orphans.length > 0) {
+            var u = orphans.pop();
+            var treeLabel = g.cut[u];
+
+            var bFreeOrphan = true;
+            for (var i = 0; i < g.nodes[u].length; i++) {
+                // check if different tree or no capacity
+                var v = g.nodes[u][i].node;
+                var ri = g.nodes[u][i].rindx;
+                //console.log("...orphan " + u + " is checking adoption by " + v + " (" + treeLabel + ")");
+                if (g.cut[v] != treeLabel) continue;
+                if ((treeLabel == MAX_FLOW_SOURCE) && (g.nodes[v][ri].w == 0.0)) continue;
+                if ((treeLabel == MAX_FLOW_TARGET) && (g.nodes[u][i].w == 0.0)) continue;
+
+                // check that u is not an ancestor of v
+                while ((v != u) && (parents[v] != MAX_FLOW_TERMINAL)) {
+                    //console.log("...parent of " + v + " is " + g.nodes[v][parents[v]].node);
+                    v = g.nodes[v][parents[v]].node;                    
+                }
+                //console.log("...parent of " + v + " is " + (treeLabel == MAX_FLOW_TARGET ? "t" : "s"));
+                if (v == u) continue;
+
+                // add as parent
+                //console.log("...orphan " + u + " adopted by " + g.nodes[u][i].node + " (" + treeLabel + ")");
+                parents[u] = i;
+                bFreeOrphan = false;
+                break;
+            }
+
+            if (bFreeOrphan) {
+                //console.log("...freeing orphan " + u);
+                for (var i = 0; i < g.nodes[u].length; i++) {
+                    var v = g.nodes[u][i].node;
+                    if ((g.cut[v] == treeLabel) && (parents[v] == g.nodes[u][i].rindx)) {
+                        parents[v] = MAX_FLOW_TERMINAL;
+                        orphans.push(v);
+                        if (active.indexOf(v) == -1) active.push(v);
+                    }
+                }
+
+                // mark inactive and free
+                var indx = active.indexOf(u);
+                if (indx != -1) active.splice(indx, 1);
+                g.cut[u] = MAX_FLOW_FREE;
+            }
         }
     }
-/// END DEBUGGING
-    }
-
 
     return g.flowValue;
 }
