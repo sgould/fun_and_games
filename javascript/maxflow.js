@@ -1,5 +1,5 @@
 /*******************************************************************************
-**  maxflow.js
+** maxflow.js
 ** Copyright (C) 2015, Stephen Gould <stephen.gould@anu.edu.au>
 *******************************************************************************/
 
@@ -48,12 +48,22 @@ function maxFlowAddConstant(g, c)
 
 function maxFlowAddSourceEdge(g, u, c)
 {
-    g.sourceEdges[u] += c;
+    if (c > 0.0) {
+        g.sourceEdges[u] += c;
+    } else {
+        g.targetEdges[u] -= c;
+        g.flowValue += c;
+    }
 }
 
 function maxFlowAddTargetEdge(g, u, c)
 {
-    g.targetEdges[u] += c;
+    if (c > 0.0) {
+        g.targetEdges[u] += c;
+    } else {
+        g.sourceEdges[u] -= c;
+        g.flowValue += c;
+    }
 }
 
 // Add an edge to the graph from u to v with (positive) capacity c.
