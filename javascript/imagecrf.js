@@ -47,13 +47,17 @@ function imageCRFContrast(imageData) {
         contrast.west[y] = column;
     }
 
+    // TODO: north-west
+    // TODO: north-east
+
     // exponentiate normalized contrasts
     beta = -1.0 * count / beta;
-    for (var c in contrast) {
-        for (var y = 0; y < c.length; y++) {
-            for (var x = 0; x < c[y].length; x++) {
-                if (c[y][x] != Number.NaN) {
-                    c[y][x] = Math.exp(beta * c[y][x]);
+    for (var key in contrast) {
+        for (var y = 0; y < contrast[key].length; y++) {
+            if (typeof(contrast[key][y]) == "undefined") continue;
+            for (var x = 0; x < contrast[key][y].length; x++) {
+                if (contrast[key][y][x] != Number.NaN) {
+                    contrast[key][y][x] = Math.exp(beta * contrast[key][y][x]);
                 }
             }
         }
@@ -96,7 +100,7 @@ function imageCRFLabel(imageData, unary, lambda)
             maxFlowAddEdge(g, u - 1, u, lambda * contrast.west[y][x]);
         }
     }
-    
+
     // find mincut
     var f = maxFlowBK(g);
 
