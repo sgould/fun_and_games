@@ -5,7 +5,8 @@
 ** Requires maxflow.js
 *******************************************************************************/
 
-function imageCRFPixelSqrDiff(imageData, x1, y1, x2, y2) {
+function imageCRFPixelSqrDiff(imageData, x1, y1, x2, y2) 
+{
     var i1 = 4 * (y1 * imageData.width + x1);
     var i2 = 4 * (y2 * imageData.width + x2);
     var d = 0.0;
@@ -15,7 +16,9 @@ function imageCRFPixelSqrDiff(imageData, x1, y1, x2, y2) {
     return d;
 }
 
-function imageCRFContrast(imageData) {
+function imageCRFContrast(imageData) 
+{
+    //var t0 = performance.now();
     var contrast = {};
 
     // averaging
@@ -47,8 +50,27 @@ function imageCRFContrast(imageData) {
         contrast.west[y] = column;
     }
 
-    // TODO: north-west
-    // TODO: north-east
+    // north-west
+    contrast.northwest = [];
+    for (var y = 1; y < imageData.height; y++) {
+        var column = [];
+        column[0] = Number.NaN;
+        for (var x = 1; x < imageData.width; x++) {
+            column[x] = imageCRFPixelSqrDiff(imageData, x, y, x - 1, y - 1);
+        }
+        contrast.northwest[y] = column;
+    }
+
+    // north-east
+    contrast.northeast = [];
+    for (var y = 1; y < imageData.height; y++) {
+        var column = [];
+        column[0] = Number.NaN;
+        for (var x = 0; x < imageData.width - 1; x++) {
+            column[x] = imageCRFPixelSqrDiff(imageData, x, y, x + 1, y - 1);
+        }
+        contrast.northeast[y] = column;
+    }
 
     // exponentiate normalized contrasts
     beta = -1.0 * count / beta;
@@ -63,10 +85,14 @@ function imageCRFContrast(imageData) {
         }
     }
 
+    //var td = Math.floor(100.0 * (performance.now() - t0)) / 100.0;
+    //console.log("imageCRFContrast took " + td + "ms");
+
     return contrast;
 }
 
 // Label an image with unary and pairwise terms.
+// TODO: alpha-expansion
 function imageCRFLabel(imageData, unary, lambda)
 {
     var contrast = imageCRFContrast(imageData);
@@ -98,6 +124,25 @@ function imageCRFLabel(imageData, unary, lambda)
             var u = y * imageData.width + x;
             maxFlowAddEdge(g, u, u - 1, lambda * contrast.west[y][x]);
             maxFlowAddEdge(g, u - 1, u, lambda * contrast.west[y][x]);
+        }
+    }
+
+    var diagLambda = lambda / Math.sqrt(2.0);
+    for (var y = 1; y < imageData.height; y++) {
+        for (var x = 1; x < imageData.width; x++) {
+            var u = (y - 1) * imageData.width + x - 1;
+            var v = y * imageData.width + x;
+            maxFlowAddEdge(g, u, v, diagLambda * contrast.northwest[y][x]);
+            maxFlowAddEdge(g, v, u, diagLambda * contrast.northwest[y][x]);
+        }
+    }
+
+    for (var y = 1; y < imageData.height; y++) {
+        for (var x = 0; x < imageData.width - 1; x++) {
+            var u = (y - 1) * imageData.width + x + 1;
+            var v = y * imageData.width + x;
+            maxFlowAddEdge(g, u, v, diagLambda * contrast.northeast[y][x]);
+            maxFlowAddEdge(g, v, u, diagLambda * contrast.northeast[y][x]);
         }
     }
 

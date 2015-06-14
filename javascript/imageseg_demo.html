@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="author" content="Stephen Gould"/>
+<title>Image Segmentation Demo</title>
+<script type="text/javascript" src="maxflow.js"></script>
+<script type="text/javascript" src="imagecrf.js"></script>
+<script>
+function log_message(str) {
+    document.getElementById("messages").value =
+        document.getElementById("messages").value + str + "\n";
+}
+
+function getPixel(imageData, x, y) {
+    var indx = 4 * (y * imageData.width + x);
+    var rgb = [imageData.data[indx + 0], imageData.data[indx + 1], imageData.data[indx + 2]];
+    return rgb;
+}
+
+function setPixel(imageData, x, y, rgb) {
+    var indx = 4 * (y * imageData.width + x);
+    imageData.data[indx + 0] = rgb[0];
+    imageData.data[indx + 1] = rgb[1];
+    imageData.data[indx + 2] = rgb[2];
+    imageData.data[indx + 3] = 255;
+}
+
+function init() {
+    document.getElementById("messages").value = "";
+    segmentImage();
+}
+
+function segmentImage() {
+    var canvas = document.getElementById("canvas");
+    var context = canvas.getContext("2d");
+    imageData = context.createImageData(canvas.width, canvas.height);
+
+    var unary = [];
+    for (var y = 0; y < imageData.height; y++) {
+        var column = [];
+        for (var x = 0; x < imageData.width; x++) {
+            column[x] = 2.0 * Math.random() - 1.0;
+        }
+        unary[y] = column;
+    }
+
+    for (var y = 0; y < canvas.height; y++) {
+        for (var x = 0; x < canvas.width; x++) {
+            var r = (unary[y][x] > 0.0) ? 256 * unary[y][x] : 0;
+            var g = (unary[y][x] < 0.0) ? -256 * unary[y][x] : 0;
+            setPixel(imageData, x, y, [r | 0, g | 0, 0]);
+        }
+    }
+
+    context.putImageData(imageData, 0, 0);
+    
+    log_message("--- image seg start ---");
+    log_message("pixels: " + imageData.height * imageData.width);
+    var t0 = performance.now();
+    var labels = imageCRFLabel(imageData, unary, 1.0);
+    var td = Math.floor(100.0 * (performance.now() - t0)) / 100.0;
+    log_message("--- image seg done in " + td + "ms ---");
+
+    var canvas2 = document.getElementById("canvas2");
+    var context2 = canvas2.getContext("2d");
+    imageData2 = context2.createImageData(canvas2.width, canvas2.height);
+
+    for (var y = 0; y < canvas2.height; y++) {
+        for (var x = 0; x < canvas2.width; x++) {
+            var c = labels[y][x] == 0 ? 255 : 0;
+            setPixel(imageData2, x, y, [c, c, c]);
+        }
+    }       
+
+    context2.putImageData(imageData2, 0, 0);
+}
+</script>
+</head>
+
+<body onload="init()">
+
+Console:<br>
+<textarea rows="25" cols="80" id="messages">
+</textarea>
+<p>
+
+<a href="#" onClick="segmentImage();">segment image</a>
+<p>
+
+Canvas:<br>
+<canvas id="canvas" width="160" height="120">
+</canvas>
+
+<canvas id="canvas2" width="160" height="120">
+</canvas>
+
+</body>
+</html>
