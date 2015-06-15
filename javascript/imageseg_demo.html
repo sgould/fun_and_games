@@ -5,6 +5,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <meta name="author" content="Stephen Gould"/>
 <title>Image Segmentation Demo</title>
+<link rel="stylesheet" href="buttons.css" type="text/css"/>
 <script type="text/javascript" src="maxflow.js"></script>
 <script type="text/javascript" src="imagecrf.js"></script>
 <script>
@@ -79,22 +80,34 @@ function segmentImage() {
 </script>
 </head>
 
-<body onload="init()">
+<body onload="init()" style="font-family:Arial; text-align:center;">
 
 Console:<br>
 <textarea rows="25" cols="80" id="messages">
 </textarea>
 <p>
 
-<a href="#" onClick="segmentImage();">segment image</a>
+<a href="#" class="green wide_button" onClick="segmentImage();">segment image</a>
 <p>
 
 Canvas:<br>
-<canvas id="canvas" width="160" height="120">
+<center>
+<table>
+<tr>
+<td>
+<canvas id="canvas" width="180" height="120">
 </canvas>
-
-<canvas id="canvas2" width="160" height="120">
+</td>
+<td>
+<span style="font-size:36px;">&nbsp;&#8594;&nbsp;</span> 
+</td>
+<td>
+<canvas id="canvas2" width="180" height="120">
 </canvas>
+</td>
+</tr>
+</table>
+</center>
 
 </body>
 </html>

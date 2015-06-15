@@ -19,6 +19,16 @@ function init() {
     }
 
     context.putImageData(imageData, 0, 0);
+
+    canvas.addEventListener("mousedown", doMouseDown, false);
+}
+
+function doMouseDown(event) {
+    var canvas = document.getElementById("canvas");
+    var r = canvas.getBoundingClientRect();
+    var x = Math.round((event.clientX - r.left) / (r.right - r.left) * canvas.width);
+    var y = Math.round((event.clientY - r.top) / (r.bottom - r.top) * canvas.height);
+    alert("p = (" + x + ", " + y + ")");
 }
 
 function getPixel(imageData, x, y) {
