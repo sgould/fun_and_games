@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -----------------------------------------------------------------------
-# BLOCKUS
+# BLOKUS
 # Copyright 2015, Stephen Gould <stephen.gould@anu.edu.au>
 # -----------------------------------------------------------------------
-# Code for playing a modified game of blockus.
+# Code for playing a modified game of blokus.
 # -----------------------------------------------------------------------
 
 __author__ = "Stephen Gould"
@@ -31,6 +31,10 @@ class Piece(object):
 
     def __str__(self):
         return str(self.blocks)
+
+    def size(self):
+        """Return the number of blocks in this piece."""
+        return len(self.blocks)
 
     def rotate(self):
         """Rotate a piece by 90 degree clockwise."""
@@ -82,6 +86,7 @@ class Player(object):
         self.add_piece(((0, 0), (1, 0), (1, 1), (1, 2), (2, 1)))            # 5
         self.add_piece(((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)), 1, True) # 5-plus
         self.add_piece(((0, 0), (1, 0), (2, 0), (3, 0), (1, 1)))            # 5
+        self.last_played = None
 
     def add_piece(self, blocks, rotations=4, symmetry=False):
         """Add a piece to this player's set of pieces."""
@@ -89,7 +94,14 @@ class Player(object):
 
     def remove_piece(self, indx):
         """Remove a piece from this player's set of piece."""
+        self.last_played = self.pieces[indx]
         del self.pieces[indx]
+
+    def score(self):
+        """Computes the score for this player."""
+        if not self.pieces:
+            return 20 if self.last_played.size() == 1 else 15
+        return -1 * sum([p.size() for p in self.pieces])
 
 
 class Board(object):
@@ -104,6 +116,15 @@ class Board(object):
         b.board = np.copy(self.board)
         return b
 
+    def get_free_cells(self):
+        """Returns list of free cells."""
+        cells = []
+        for row in range(self.ROWS):
+            for col in range(self.COLS):
+                if self.board[row, col] == 0:
+                    cells.append((col, row))
+        return cells
+
     def is_legal_placement(self, row, col, blocks, player):
         """Check that piece placement is legal."""
 
@@ -112,20 +133,23 @@ class Board(object):
             return False
 
         # check that locations are free
-        delta_board = np.copy(self.board)
+        bottom_left_corner, any_corner = False, False
         for (x, y) in blocks:
             u, v = col + x, row + y
             if (0 <= u < self.COLS) and (0 <= v < self.ROWS):
                 if self.board[v, u] != 0:
                     return False
-                delta_board[v, u] = player
+                if (u == 0) and (v == 0):
+                    bottom_left_corner = True
+                if ((u == 0) or (u == self.COLS - 1)) and ((v == 0) or (v == self.ROWS - 1)):
+                    any_corner = True
             else:
                 return False
 
         # check corner position is taken
-        if (delta_board[0, 0] == 0): return False # break initial symmetry
-        if ((delta_board[0, 0] != player) and (delta_board[-1, 0] != player) and
-            (delta_board[0, -1] != player) and (delta_board[-1, -1] != player)):
+        if not bottom_left_corner and self.board[0, 0] == 0: return False # break initial symmetry
+        if (not any_corner and (self.board[0, 0] != player) and (self.board[-1, 0] != player) and
+            (self.board[0, -1] != player) and (self.board[-1, -1] != player)):
             return False
 
         # return true if taken in this move
@@ -169,27 +193,42 @@ class Board(object):
             for col in range(self.COLS):
                 squares[row, col].set_facecolor(COLOURS[self.board[col, row]])
 
+
 # TESTING
 import sys
 
 def expand_node(board, agent):
-    children = []
+    children = deque()
+    cells = board.get_free_cells()
     for i, p in enumerate(agent.pieces):
+        print(["-", "/", "|", "\\"][i % 4], end="\r")
         for r in p.generator():
-            for y in range(board.ROWS):
-                print(["-", "/", "|", "\\"][y % 4], end="\r")
-                for x in range(board.COLS):
-                    if board.is_legal_placement(y, x, r, agent.id):
-                        children.append((i, r, x, y))
+            for x, y in cells:
+                if board.is_legal_placement(y, x, r, agent.id):
+                    children.append((i, r, x, y))
 
     return children
+
+def count_expand_node(board, agent):
+    count = 0
+    cells = board.get_free_cells()
+    for i, p in enumerate(agent.pieces):
+        print(["-", "/", "|", "\\"][i % 4], end="\r")
+        for r in p.generator():
+            for x, y in cells:
+                if board.is_legal_placement(y, x, r, agent.id):
+                    count += 1
+
+    return count
+
 
 initial_agents = [Player(p + 1) for p in range(4)]
 initial_board = Board()
 
+"""
 frontier = deque()
 frontier.append((0, initial_board.copy(), deepcopy(initial_agents)))
-for n in range(58):
+for n in range(1 + 56 + 56):
     player, board, agents = frontier.pop()
     moves = expand_node(board, agents[player])
     for i, r, x, y in moves:
@@ -200,14 +239,15 @@ for n in range(58):
         frontier.appendleft(((player + 1) % 4, b, a))
     
     print("player {}: {}".format(player + 1, len(frontier)))
+"""
 
-
-
+"""
 first_ply = expand_node(initial_board, initial_agents[0])
 unique_moves = 0
 for i, p in enumerate(agents[0].pieces):
     unique_moves += p.rotations * (1 if p.symmetry else 2)
 print("{} moves in first ply from {} unique piece orientations".format(len(first_ply), unique_moves))
+"""
 
 for a in initial_agents:
     random.shuffle(a.pieces)
@@ -217,13 +257,13 @@ def ani(fnum, agents, board, squares):
 
     player = (fnum - 1) % len(agents)
 
-    ply_moves = expand_node(board, agents[player])
-    print("{} moves for player {} in ply {}".format(len(ply_moves), player + 1, fnum))
+    #ply_moves = expand_node(board, agents[player])
+    num_ply_moves = count_expand_node(board, agents[player])
+    print("{} moves for player {} in ply {}".format(num_ply_moves, player + 1, fnum))
 
-    cells = [(x, y) for x in range(board.COLS) for y in range(board.ROWS)]
+    cells = board.get_free_cells()
     random.shuffle(cells)
     for i, p in enumerate(agents[player].pieces):
-        print(["-", "/", "|", "\\"][i % 4], end="\r")
         for r in p.generator():
             for x, y in cells:
                 if board.is_legal_placement(y, x, r, player + 1):
@@ -231,6 +271,8 @@ def ani(fnum, agents, board, squares):
                     board.place_piece(y, x, r, player + 1)
                     agents[player].remove_piece(i)
                     board.draw_board(squares)
+                    plt.title("blue: {}, yellow: {}, red: {}, green: {}".format(
+                        agents[0].score(), agents[1].score(), agents[2].score(), agents[3].score()))
                     return
 
 
@@ -246,5 +288,8 @@ ax.yaxis.set_major_locator(plt.NullLocator())
 squares = np.array([[RegularPolygon((i + 0.5, j + 0.5), numVertices=4, radius=0.5 * np.sqrt(2),
     orientation=np.pi / 4, ec="#000000", fc="#ffffff") for j in range(initial_board.COLS)] for i in range(initial_board.ROWS)])
 [ax.add_patch(sq) for sq in squares.flat]
-animation.FuncAnimation(fig, ani, interval=100, repeat=False, fargs=(initial_agents, initial_board, squares), frames=4*len(agents[0].pieces))
+animation.FuncAnimation(fig, ani, interval=100, repeat=False, fargs=(initial_agents, initial_board, squares), frames=84)
 plt.show()
+
+for p in initial_agents:
+    print("Player {} scored {} ({} pieces remaining)".format(p.id, p.score(), len(p.pieces)))
