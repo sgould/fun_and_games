@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.patches import RegularPolygon
 
+# --- piece class -------------------------------------------------------
+
 class Piece(object):
     """Encapsulates a piece."""
 
@@ -59,61 +61,78 @@ class Piece(object):
                 self.rotate()
                 r -= 1
 
+# --- game definition ---------------------------------------------------
+
+NUM_ROWS = 20
+NUM_COLS = 20
+NUM_PLAYERS = 4
+
+PIECE_DEFS = []
+PIECE_DEFS.append(Piece(((0, 0), ), 1, True))                                 # 1-by-1
+PIECE_DEFS.append(Piece(((0, 0), (1, 0)), 2, True))                           # 1-by-2
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (1, 1)), 4, True))                   # 3-corner
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0)), 2, True))                   # 1-by-3
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (1, 1), (0, 1)), 1, True))           # 2-by-2
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (1, 1)), 4, True))           # 4-tee
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (3, 0)), 2, True))           # 1-by-4
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (2, 1))))                    # 4-ell
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (1, 1), (2, 1)), 2))                 # 4-ess
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (3, 0), (3, 1))))            # 5-ell
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (2, 1), (2, 2)), 4, True))   # 5-corner
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (1, 1), (2, 1), (3, 1))))            # 5-ess
+PIECE_DEFS.append(Piece(((0, 0), (0, 1), (1, 1), (2, 1), (2, 2)), 2))         # 5-ess'
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (3, 0), (4, 0)), 2, True))   # 1-by-5
+PIECE_DEFS.append(Piece(((0, 0), (0, 1), (1, 1), (1, 0), (0, 2))))            # 5
+PIECE_DEFS.append(Piece(((0, 0), (0, 1), (1, 1), (1, 2), (2, 2)), 4, True))   # 5
+PIECE_DEFS.append(Piece(((0, 0), (0, 1), (0, 2), (1, 0), (1, 2)), 4, True))   # 5-cee
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (1, 1), (1, 2), (2, 1))))            # 5
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)), 1, True)) # 5-plus
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (3, 0), (1, 1))))            # 5
+
+# --- player class ------------------------------------------------------
+
 class Player(object):
     """Encapsulates a player agent."""
 
     def __init__(self, id):
         assert 1 <= id <= 4
         self.id = id
-        self.pieces = []
-        self.add_piece(((0, 0), ), 1, True)                                 # 1-by-1
-        self.add_piece(((0, 0), (1, 0)), 2, True)                           # 1-by-2
-        self.add_piece(((0, 0), (1, 0), (1, 1)), 4, True)                   # 3-corner
-        self.add_piece(((0, 0), (1, 0), (2, 0)), 2, True)                   # 1-by-3
-        self.add_piece(((0, 0), (1, 0), (1, 1), (0, 1)), 1, True)           # 2-by-2
-        self.add_piece(((0, 0), (1, 0), (2, 0), (1, 1)), 4, True)           # 4-tee
-        self.add_piece(((0, 0), (1, 0), (2, 0), (3, 0)), 2, True)           # 1-by-4
-        self.add_piece(((0, 0), (1, 0), (2, 0), (2, 1)))                    # 4-ell
-        self.add_piece(((0, 0), (1, 0), (1, 1), (2, 1)), 2)                 # 4-ess
-        self.add_piece(((0, 0), (1, 0), (2, 0), (3, 0), (3, 1)))            # 5-ell
-        self.add_piece(((0, 0), (1, 0), (2, 0), (2, 1), (2, 2)), 4, True)   # 5-corner
-        self.add_piece(((0, 0), (1, 0), (1, 1), (2, 1), (3, 1)))            # 5-ess
-        self.add_piece(((0, 0), (0, 1), (1, 1), (2, 1), (2, 2)), 2)         # 5-ess'
-        self.add_piece(((0, 0), (1, 0), (2, 0), (3, 0), (4, 0)), 2, True)   # 1-by-5
-        self.add_piece(((0, 0), (0, 1), (1, 1), (1, 0), (0, 2)))            # 5
-        self.add_piece(((0, 0), (0, 1), (1, 1), (1, 2), (2, 2)), 4, True)   # 5
-        self.add_piece(((0, 0), (0, 1), (0, 2), (1, 0), (1, 2)), 4, True)   # 5-cee
-        self.add_piece(((0, 0), (1, 0), (1, 1), (1, 2), (2, 1)))            # 5
-        self.add_piece(((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)), 1, True) # 5-plus
-        self.add_piece(((0, 0), (1, 0), (2, 0), (3, 0), (1, 1)))            # 5
+        self.pieces = list(range(len(PIECE_DEFS)))
         self.last_played = None
 
-    def add_piece(self, blocks, rotations=4, symmetry=False):
+    def __getitem__(self, indx):
+        """Return the piece referenced by indx."""
+        return PIECE_DEFS[self.pieces[indx]]
+
+    def __len__(self):
+        return len(self.pieces)
+
+    def add_piece(self, piece_id):
         """Add a piece to this player's set of pieces."""
-        self.pieces.append(Piece(blocks, rotations, symmetry))
+        self.pieces.append(piece_id)
 
     def remove_piece(self, indx):
         """Remove a piece from this player's set of piece."""
-        self.last_played = self.pieces[indx]
+        self.last_played = PIECE_DEFS[indx]
         del self.pieces[indx]
 
     def score(self):
         """Computes the score for this player."""
         if not self.pieces:
             return 20 if self.last_played.size() == 1 else 15
-        return -1 * sum([p.size() for p in self.pieces])
+        return -1 * sum([PIECE_DEFS[i].size() for i in self.pieces])
 
+# --- board class -------------------------------------------------------
 
 class Board(object):
     """Encapsulates a game board."""
-    ROWS, COLS = 20, 20
 
     def __init__(self, state = None):
         if (state is not None):
-            assert state.shape == (self.ROWS, self.COLS)
+            assert state.shape == (NUM_ROWS, NUM_COLS)
             self.board = np.copy(state)
         else:
-            self.board = np.zeros((self.ROWS, self.COLS), dtype=np.byte)
+            self.board = np.zeros((NUM_ROWS, NUM_COLS), dtype=np.byte)
         self.cant_have_any_map = [None for p in range(4)]
         self.must_have_one_map = [None for p in range(4)]
 
@@ -124,42 +143,49 @@ class Board(object):
         b.must_have_one_map = deepcopy(self.must_have_one_map)
         return b
 
-    def get_free_cells(self):
+    def get_free_cells(self, player=None):
         """Returns list of free cells."""
         cells = []
-        for row in range(self.ROWS):
-            for col in range(self.COLS):
-                if self.board[row, col] == 0:
-                    cells.append((col, row))
+        if player is None or self.cant_have_any_map[player - 1] is None:
+            for row in range(NUM_ROWS):
+                for col in range(NUM_COLS):
+                    if self.board[row, col] == 0:
+                        cells.append((col, row))
+        else:
+            for row in range(NUM_ROWS):
+                for col in range(NUM_COLS):
+                    if self.cant_have_any_map[player - 1][row, col] != 1:
+                        cells.append((col, row))
+
         return cells
 
     def get_validity_map(self, player):
         """Returns a map of valid cell locations for a given player. Used internally
         by is_legal_placement."""
 
-        cant_have_any_map  = np.zeros((self.ROWS, self.COLS), dtype=np.byte)
-        must_have_one_map  = np.zeros((self.ROWS, self.COLS), dtype=np.byte)
-        for row in range(self.ROWS):
-            for col in range(self.COLS):
+        cant_have_any_map  = np.zeros((NUM_ROWS, NUM_COLS), dtype=np.byte)
+        must_have_one_map  = np.zeros((NUM_ROWS, NUM_COLS), dtype=np.byte)
+        for row in range(NUM_ROWS):
+            for col in range(NUM_COLS):
                 if self.board[row, col] != 0:
                     cant_have_any_map[row, col] = 1
                 else:
                     if (row > 0) and (self.board[row - 1, col] == player):
                         cant_have_any_map[row, col] = 1
-                    if (row + 1 < self.ROWS) and (self.board[row + 1, col] == player):
+                    if (row + 1 < NUM_ROWS) and (self.board[row + 1, col] == player):
                         cant_have_any_map[row, col] = 1
                     if (col > 0) and (self.board[row, col - 1] == player):
                         cant_have_any_map[row, col] = 1
-                    if (col + 1 < self.COLS) and (self.board[row, col + 1] == player):
+                    if (col + 1 < NUM_COLS) and (self.board[row, col + 1] == player):
                         cant_have_any_map[row, col] = 1
 
                     if (row > 0) and (col > 0) and (self.board[row - 1, col - 1] == player):
                         must_have_one_map[row, col] = 1
-                    if (row > 0) and (col + 1 < self.COLS) and (self.board[row - 1, col + 1] == player):
+                    if (row > 0) and (col + 1 < NUM_COLS) and (self.board[row - 1, col + 1] == player):
                         must_have_one_map[row, col] = 1
-                    if (row + 1 < self.ROWS) and (col > 0) and (self.board[row + 1, col - 1] == player):
+                    if (row + 1 < NUM_ROWS) and (col > 0) and (self.board[row + 1, col - 1] == player):
                         must_have_one_map[row, col] = 1
-                    if (row + 1 < self.ROWS) and (col + 1 < self.COLS) and (self.board[row + 1, col + 1] == player):
+                    if (row + 1 < NUM_ROWS) and (col + 1 < NUM_COLS) and (self.board[row + 1, col + 1] == player):
                         must_have_one_map[row, col] = 1
 
         if self.board[0, 0] == 0:
@@ -171,7 +197,6 @@ class Board(object):
 
         return cant_have_any_map, must_have_one_map
 
-
     def is_legal_placement(self, row, col, blocks, player):
         """Check that piece placement is legal."""
         assert 1 <= player <= 4
@@ -182,7 +207,7 @@ class Board(object):
         legal = False
         for (x, y) in blocks:
             u, v = col + x, row + y
-            if (0 <= u < self.COLS) and (0 <= v < self.ROWS):
+            if (0 <= u < NUM_COLS) and (0 <= v < NUM_ROWS):
                 if self.cant_have_any_map[player - 1][v, u]:
                     return False
                 if self.must_have_one_map[player - 1][v, u]:
@@ -193,11 +218,35 @@ class Board(object):
         return legal
 
     def place_piece(self, row, col, blocks, player):
+        """Place a piece on the board and update internal state."""
         for (x, y) in blocks:
             self.board[row + y, col + x] = player
 
-        self.cant_have_any_map[player - 1] = None
-        self.must_have_one_map[player - 1] = None
+        # update validity maps
+        if self.must_have_one_map[player - 1] is not None:
+            for (x, y) in blocks:
+                u, v = x + col, y + row
+                if (v > 0) and (u > 0):
+                    self.must_have_one_map[player - 1][v - 1, u - 1] = 1
+                if (v > 0) and (u + 1 < NUM_COLS):
+                    self.must_have_one_map[player - 1][v - 1, u + 1] = 1
+                if (v + 1 < NUM_ROWS) and (u > 0):
+                    self.must_have_one_map[player - 1][v + 1, u - 1] = 1
+                if (v + 1 < NUM_ROWS) and (u + 1 < NUM_COLS):
+                    self.must_have_one_map[player - 1][v + 1, u + 1] = 1
+
+        if self.cant_have_any_map[player - 1] is not None:
+            for (x, y) in blocks:
+                u, v = x + col, y + row
+                if (v > 0):
+                    self.cant_have_any_map[player - 1][v - 1, u] = 1
+                if (v + 1 < NUM_ROWS):
+                    self.cant_have_any_map[player - 1][v + 1, u] = 1
+                if (u > 0):
+                    self.cant_have_any_map[player - 1][v, u - 1] = 1
+                if (u + 1 < NUM_COLS):
+                    self.cant_have_any_map[player - 1][v, u + 1] = 1
+
         for p in range(4):
             if self.cant_have_any_map[p] is not None:
                 for (x, y) in blocks:
@@ -205,9 +254,10 @@ class Board(object):
 
     def draw_board(self, squares):
         COLOURS = ["#afafaf", "#3f3fff", "#dfdf3f", "#df3f3f", "#1fdf1f"]
-        for row in range(self.ROWS):
-            for col in range(self.COLS):
+        for row in range(NUM_ROWS):
+            for col in range(NUM_COLS):
                 squares[row, col].set_facecolor(COLOURS[self.board[col, row]])
+
 
 
 # TESTING
@@ -215,37 +265,60 @@ import sys
 
 def expand_node(board, agent):
     children = deque()
-    cells = board.get_free_cells()
-    for i, p in enumerate(agent.pieces):
-        print(["-", "/", "|", "\\"][i % 4], end="\r")
-        for r in p.generator():
+    cells = board.get_free_cells(agent.id)
+    for i in range(len(agent)):
+        #print(["-", "/", "|", "\\"][i % 4], end="\r")
+        for r in agent[i].generator():
             for x, y in cells:
                 if board.is_legal_placement(y, x, r, agent.id):
                     children.append((i, r, x, y))
 
     return children
 
-def count_expand_node(board, agent):
-    count = 0
-    cells = board.get_free_cells()
-    for i, p in enumerate(agent.pieces):
-        print(["-", "/", "|", "\\"][i % 4], end="\r")
-        for r in p.generator():
-            for x, y in cells:
-                if board.is_legal_placement(y, x, r, agent.id):
-                    count += 1
-
-    return count
-
 
 initial_agents = [Player(p + 1) for p in range(4)]
 initial_board = Board()
 
-"""
-frontier = deque()
-frontier.append((0, initial_board.copy(), deepcopy(initial_agents)))
-for n in range(1 + 56 + 56):
+if False:
+    frontier = deque()
+    frontier.append((0, initial_board.copy(), deepcopy(initial_agents)))
+    for n in range(1 + 56 + 56 * 168):
+        player, board, agents = frontier.pop()
+
+        moves = expand_node(board, agents[player])
+        for i, r, x, y in moves:
+            b = board.copy()
+            b.place_piece(y, x, r, player + 1)
+            a = deepcopy(agents)
+            a[player].remove_piece(i)
+            frontier.appendleft(((player + 1) % 4, b, a))
+
+        print("player {}: {}".format(player + 1, len(frontier)))
+
+    sys.exit()
+
+
+def search_ani(fnum, frontier, squares):
+
+    if not frontier:
+        return
+
     player, board, agents = frontier.pop()
+    board.draw_board(squares)
+
+    if fnum < 35:
+        cells = board.get_free_cells(player + 1)
+        random.shuffle(cells)
+        for i in range(len(agents[player])):
+            for r in agents[player][i].generator():
+                for x, y in cells:
+                    if board.is_legal_placement(y, x, r, player + 1):
+                        board.place_piece(y, x, r, player + 1)
+                        agents[player].remove_piece(i)
+                        frontier.appendleft(((player + 1) % 4, board, agents))
+                        return
+
+    plt.title("...{} nodes in search frontier".format(len(frontier)))
 
     moves = expand_node(board, agents[player])
     for i, r, x, y in moves:
@@ -255,10 +328,6 @@ for n in range(1 + 56 + 56):
         a[player].remove_piece(i)
         frontier.appendleft(((player + 1) % 4, b, a))
 
-    print("player {}: {}".format(player + 1, len(frontier)))
-
-sys.exit()
-"""
 
 """
 first_ply = expand_node(initial_board, initial_agents[0])
@@ -278,13 +347,12 @@ def ani(fnum, agents, board, squares):
 
     ply_moves = expand_node(board, agents[player])
     num_ply_moves = len(ply_moves)
-    #num_ply_moves = count_expand_node(board, agents[player])
     print("{} moves for player {} in ply {}".format(num_ply_moves, player + 1, fnum))
 
     cells = board.get_free_cells()
     random.shuffle(cells)
-    for i, p in enumerate(agents[player].pieces):
-        for r in p.generator():
+    for i in range(len(agents[player])):
+        for r in agents[player][i].generator():
             for x, y in cells:
                 if board.is_legal_placement(y, x, r, player + 1):
                     #print("...placing {} at ({}, {})".format(r, x, y))
@@ -300,15 +368,22 @@ def ani(fnum, agents, board, squares):
 plt.ioff()                # turn off interactive mode
 fig = plt.figure()        # intialize the figure
 ax = fig.add_axes((0.05, 0.05, 0.9, 0.9), aspect="equal", frameon=False,
-    xlim=(-0.05, initial_board.COLS + 0.05), ylim=(-0.05, initial_board.ROWS + 0.05))
+    xlim=(-0.05, NUM_COLS + 0.05), ylim=(-0.05, NUM_ROWS + 0.05))
 ax.xaxis.set_major_formatter(plt.NullFormatter())
 ax.yaxis.set_major_formatter(plt.NullFormatter())
 ax.xaxis.set_major_locator(plt.NullLocator())
 ax.yaxis.set_major_locator(plt.NullLocator())
 squares = np.array([[RegularPolygon((i + 0.5, j + 0.5), numVertices=4, radius=0.5 * np.sqrt(2),
-    orientation=np.pi / 4, ec="#000000", fc="#ffffff") for j in range(initial_board.COLS)] for i in range(initial_board.ROWS)])
+    orientation=np.pi / 4, ec="#000000", fc="#ffffff") for j in range(NUM_COLS)] for i in range(NUM_ROWS)])
 [ax.add_patch(sq) for sq in squares.flat]
-animation.FuncAnimation(fig, ani, interval=100, repeat=False, fargs=(initial_agents, initial_board, squares), frames=84)
+
+if False:
+    animation.FuncAnimation(fig, ani, interval=100, repeat=False, fargs=(initial_agents, initial_board, squares), frames=84)
+else:
+    frontier = deque()
+    frontier.append((0, initial_board, initial_agents))
+    animation.FuncAnimation(fig, search_ani, interval=10, fargs=(frontier, squares))
+
 plt.show()
 
 for p in initial_agents:
