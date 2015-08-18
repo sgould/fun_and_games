@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # -----------------------------------------------------------------------
 # VIZPAIRWISESEQ
 # Copyright 2015, Stephen Gould <stephen.gould@anu.edu.au>
