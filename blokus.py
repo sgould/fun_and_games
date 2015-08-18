@@ -78,6 +78,7 @@ PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (3, 0)), 2, True))           # 
 PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (2, 1))))                    # 4-ell
 PIECE_DEFS.append(Piece(((0, 0), (1, 0), (1, 1), (2, 1)), 2))                 # 4-ess
 PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (3, 0), (3, 1))))            # 5-ell
+PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (1, 1), (1, 2)), 4, True))   # 5-tee
 PIECE_DEFS.append(Piece(((0, 0), (1, 0), (2, 0), (2, 1), (2, 2)), 4, True))   # 5-corner
 PIECE_DEFS.append(Piece(((0, 0), (1, 0), (1, 1), (2, 1), (3, 1))))            # 5-ess
 PIECE_DEFS.append(Piece(((0, 0), (0, 1), (1, 1), (2, 1), (2, 2)), 2))         # 5-ess'
@@ -95,7 +96,7 @@ class Player(object):
     """Encapsulates a player agent."""
 
     def __init__(self, id):
-        assert 1 <= id <= 4
+        assert 1 <= id <= NUM_PLAYERS
         self.id = id
         self.pieces = list(range(len(PIECE_DEFS)))
         self.last_played = None
@@ -133,8 +134,8 @@ class Board(object):
             self.board = np.copy(state)
         else:
             self.board = np.zeros((NUM_ROWS, NUM_COLS), dtype=np.byte)
-        self.cant_have_any_map = [None for p in range(4)]
-        self.must_have_one_map = [None for p in range(4)]
+        self.cant_have_any_map = [None for p in range(NUM_PLAYERS)]
+        self.must_have_one_map = [None for p in range(NUM_PLAYERS)]
 
     def copy(self):
         """Creates a copy of the board."""
@@ -199,7 +200,7 @@ class Board(object):
 
     def is_legal_placement(self, row, col, blocks, player):
         """Check that piece placement is legal."""
-        assert 1 <= player <= 4
+        assert 1 <= player <= NUM_PLAYERS
 
         if ((self.cant_have_any_map[player - 1] is None) or (self.must_have_one_map[player - 1] is None)):
             self.cant_have_any_map[player - 1], self.must_have_one_map[player - 1] = self.get_validity_map(player)
@@ -247,7 +248,7 @@ class Board(object):
                 if (u + 1 < NUM_COLS):
                     self.cant_have_any_map[player - 1][v, u + 1] = 1
 
-        for p in range(4):
+        for p in range(NUM_PLAYERS):
             if self.cant_have_any_map[p] is not None:
                 for (x, y) in blocks:
                     self.cant_have_any_map[p][row + y, col + x] = 1
@@ -276,7 +277,7 @@ def expand_node(board, agent):
     return children
 
 
-initial_agents = [Player(p + 1) for p in range(4)]
+initial_agents = [Player(p + 1) for p in range(NUM_PLAYERS)]
 initial_board = Board()
 
 if False:
@@ -291,7 +292,7 @@ if False:
             b.place_piece(y, x, r, player + 1)
             a = deepcopy(agents)
             a[player].remove_piece(i)
-            frontier.appendleft(((player + 1) % 4, b, a))
+            frontier.appendleft(((player + 1) % NUM_PLAYERS, b, a))
 
         print("player {}: {}".format(player + 1, len(frontier)))
 
@@ -306,27 +307,19 @@ def search_ani(fnum, frontier, squares):
     player, board, agents = frontier.pop()
     board.draw_board(squares)
 
-    if fnum < 35:
-        cells = board.get_free_cells(player + 1)
-        random.shuffle(cells)
-        for i in range(len(agents[player])):
-            for r in agents[player][i].generator():
-                for x, y in cells:
-                    if board.is_legal_placement(y, x, r, player + 1):
-                        board.place_piece(y, x, r, player + 1)
-                        agents[player].remove_piece(i)
-                        frontier.appendleft(((player + 1) % 4, board, agents))
-                        return
-
     plt.title("...{} nodes in search frontier".format(len(frontier)))
 
-    moves = expand_node(board, agents[player])
-    for i, r, x, y in moves:
-        b = board.copy()
-        b.place_piece(y, x, r, player + 1)
-        a = deepcopy(agents)
-        a[player].remove_piece(i)
-        frontier.appendleft(((player + 1) % 4, b, a))
+    for k in range(4):
+        moves = expand_node(board, agents[player])
+        if moves:
+            for i, r, x, y in moves:
+                b = board.copy()
+                b.place_piece(y, x, r, player + 1)
+                a = deepcopy(agents)
+                a[player].remove_piece(i)
+                frontier.append(((player + 1) % NUM_PLAYERS, b, a))
+            return
+        player = (player + 1) % NUM_PLAYERS
 
 
 """
@@ -377,7 +370,7 @@ squares = np.array([[RegularPolygon((i + 0.5, j + 0.5), numVertices=4, radius=0.
     orientation=np.pi / 4, ec="#000000", fc="#ffffff") for j in range(NUM_COLS)] for i in range(NUM_ROWS)])
 [ax.add_patch(sq) for sq in squares.flat]
 
-if False:
+if True:
     animation.FuncAnimation(fig, ani, interval=100, repeat=False, fargs=(initial_agents, initial_board, squares), frames=84)
 else:
     frontier = deque()
