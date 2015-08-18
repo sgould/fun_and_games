@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -----------------------------------------------------------------------
-# BLOKUS
-# Copyright 2015, Stephen Gould <stephen.gould@anu.edu.au>
+# BLOKUS Copyright 2015, Stephen Gould <stephen.gould@anu.edu.au>
 # -----------------------------------------------------------------------
-# Code for playing a modified game of blokus.
+# Code for playing a game of Blokus, a game developed by Bernard
+# Tavitian and now owned by Mattel.
 # -----------------------------------------------------------------------
 
 __author__ = "Stephen Gould"
@@ -108,12 +108,20 @@ class Board(object):
     """Encapsulates a game board."""
     ROWS, COLS = 20, 20
 
-    def __init__(self):
-        self.board = np.zeros((self.ROWS, self.COLS), dtype=np.byte)
+    def __init__(self, state = None):
+        if (state is not None):
+            assert state.shape == (self.ROWS, self.COLS)
+            self.board = np.copy(state)
+        else:
+            self.board = np.zeros((self.ROWS, self.COLS), dtype=np.byte)
+        self.cant_have_any_map = [None for p in range(4)]
+        self.must_have_one_map = [None for p in range(4)]
 
     def copy(self):
-        b = Board()
-        b.board = np.copy(self.board)
+        """Creates a copy of the board."""
+        b = Board(self.board)
+        b.cant_have_any_map = deepcopy(self.cant_have_any_map)
+        b.must_have_one_map = deepcopy(self.must_have_one_map)
         return b
 
     def get_free_cells(self):
@@ -125,67 +133,75 @@ class Board(object):
                     cells.append((col, row))
         return cells
 
+    def get_validity_map(self, player):
+        """Returns a map of valid cell locations for a given player. Used internally
+        by is_legal_placement."""
+
+        cant_have_any_map  = np.zeros((self.ROWS, self.COLS), dtype=np.byte)
+        must_have_one_map  = np.zeros((self.ROWS, self.COLS), dtype=np.byte)
+        for row in range(self.ROWS):
+            for col in range(self.COLS):
+                if self.board[row, col] != 0:
+                    cant_have_any_map[row, col] = 1
+                else:
+                    if (row > 0) and (self.board[row - 1, col] == player):
+                        cant_have_any_map[row, col] = 1
+                    if (row + 1 < self.ROWS) and (self.board[row + 1, col] == player):
+                        cant_have_any_map[row, col] = 1
+                    if (col > 0) and (self.board[row, col - 1] == player):
+                        cant_have_any_map[row, col] = 1
+                    if (col + 1 < self.COLS) and (self.board[row, col + 1] == player):
+                        cant_have_any_map[row, col] = 1
+
+                    if (row > 0) and (col > 0) and (self.board[row - 1, col - 1] == player):
+                        must_have_one_map[row, col] = 1
+                    if (row > 0) and (col + 1 < self.COLS) and (self.board[row - 1, col + 1] == player):
+                        must_have_one_map[row, col] = 1
+                    if (row + 1 < self.ROWS) and (col > 0) and (self.board[row + 1, col - 1] == player):
+                        must_have_one_map[row, col] = 1
+                    if (row + 1 < self.ROWS) and (col + 1 < self.COLS) and (self.board[row + 1, col + 1] == player):
+                        must_have_one_map[row, col] = 1
+
+        if self.board[0, 0] == 0:
+            must_have_one_map[0, 0] = 1
+        else:
+            must_have_one_map[0, -1] = 1
+            must_have_one_map[-1, 0] = 1
+            must_have_one_map[-1, -1] = 1
+
+        return cant_have_any_map, must_have_one_map
+
+
     def is_legal_placement(self, row, col, blocks, player):
         """Check that piece placement is legal."""
+        assert 1 <= player <= 4
 
-        # quick check
-        if (self.board[row, col] != 0):
-            return False
+        if ((self.cant_have_any_map[player - 1] is None) or (self.must_have_one_map[player - 1] is None)):
+            self.cant_have_any_map[player - 1], self.must_have_one_map[player - 1] = self.get_validity_map(player)
 
-        # check that locations are free
-        bottom_left_corner, any_corner = False, False
+        legal = False
         for (x, y) in blocks:
             u, v = col + x, row + y
             if (0 <= u < self.COLS) and (0 <= v < self.ROWS):
-                if self.board[v, u] != 0:
+                if self.cant_have_any_map[player - 1][v, u]:
                     return False
-                if (u == 0) and (v == 0):
-                    bottom_left_corner = True
-                if ((u == 0) or (u == self.COLS - 1)) and ((v == 0) or (v == self.ROWS - 1)):
-                    any_corner = True
+                if self.must_have_one_map[player - 1][v, u]:
+                    legal = True
             else:
                 return False
 
-        # check corner position is taken
-        if not bottom_left_corner and self.board[0, 0] == 0: return False # break initial symmetry
-        if (not any_corner and (self.board[0, 0] != player) and (self.board[-1, 0] != player) and
-            (self.board[0, -1] != player) and (self.board[-1, -1] != player)):
-            return False
-
-        # return true if taken in this move
-        if ((self.board[0, 0] != player) and (self.board[-1, 0] != player) and
-            (self.board[0, -1] != player) and (self.board[-1, -1] != player)):
-            return True
-
-        # check not touching adjacent
-        for (x, y) in blocks:
-            u, v = col + x, row + y
-            if (u > 0) and (self.board[v, u - 1] == player):
-                return False
-            if (u + 1 < self.COLS) and (self.board[v, u + 1] == player):
-                return False
-            if (v > 0) and (self.board[v - 1, u] == player):
-                return False
-            if (v + 1 < self.ROWS) and (self.board[v + 1, u] == player):
-                return False
-
-        # check touching diagonal
-        for (x, y) in blocks:
-            u, v = col + x, row + y
-            if (u > 0) and (v > 0) and (self.board[v - 1, u - 1] == player):
-                return True
-            if (u + 1 < self.COLS) and (v > 0) and (self.board[v - 1, u + 1] == player):
-                return True
-            if (u > 0) and (v + 1 < self.ROWS) and (self.board[v + 1, u - 1] == player):
-                return True
-            if (u + 1 < self.COLS) and (v + 1 < self.ROWS) and (self.board[v + 1, u + 1] == player):
-                return True
-
-        return False
+        return legal
 
     def place_piece(self, row, col, blocks, player):
         for (x, y) in blocks:
             self.board[row + y, col + x] = player
+
+        self.cant_have_any_map[player - 1] = None
+        self.must_have_one_map[player - 1] = None
+        for p in range(4):
+            if self.cant_have_any_map[p] is not None:
+                for (x, y) in blocks:
+                    self.cant_have_any_map[p][row + y, col + x] = 1
 
     def draw_board(self, squares):
         COLOURS = ["#afafaf", "#3f3fff", "#dfdf3f", "#df3f3f", "#1fdf1f"]
@@ -230,6 +246,7 @@ frontier = deque()
 frontier.append((0, initial_board.copy(), deepcopy(initial_agents)))
 for n in range(1 + 56 + 56):
     player, board, agents = frontier.pop()
+
     moves = expand_node(board, agents[player])
     for i, r, x, y in moves:
         b = board.copy()
@@ -237,8 +254,10 @@ for n in range(1 + 56 + 56):
         a = deepcopy(agents)
         a[player].remove_piece(i)
         frontier.appendleft(((player + 1) % 4, b, a))
-    
+
     print("player {}: {}".format(player + 1, len(frontier)))
+
+sys.exit()
 """
 
 """
@@ -257,8 +276,9 @@ def ani(fnum, agents, board, squares):
 
     player = (fnum - 1) % len(agents)
 
-    #ply_moves = expand_node(board, agents[player])
-    num_ply_moves = count_expand_node(board, agents[player])
+    ply_moves = expand_node(board, agents[player])
+    num_ply_moves = len(ply_moves)
+    #num_ply_moves = count_expand_node(board, agents[player])
     print("{} moves for player {} in ply {}".format(num_ply_moves, player + 1, fnum))
 
     cells = board.get_free_cells()
