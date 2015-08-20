@@ -193,8 +193,9 @@ class Board(object):
             must_have_one_map[0, 0] = 1
         else:
             must_have_one_map[0, -1] = 1
-            must_have_one_map[-1, 0] = 1
             must_have_one_map[-1, -1] = 1
+            if (self.board[0, -1] != 0) or (self.board[-1, -1] != 0):
+                must_have_one_map[-1, 0] = 1
 
         return cant_have_any_map, must_have_one_map
 
@@ -283,7 +284,7 @@ initial_board = Board()
 if False:
     frontier = deque()
     frontier.append((0, initial_board.copy(), deepcopy(initial_agents)))
-    for n in range(1 + 56 + 56 * 168):
+    for n in range(1 + 58 + 58 * 4):
         player, board, agents = frontier.pop()
 
         moves = expand_node(board, agents[player])
@@ -299,7 +300,7 @@ if False:
     sys.exit()
 
 
-def search_ani(fnum, frontier, squares):
+def search_ani(fnum, frontier, squares, statistics):
 
     if not frontier:
         return
@@ -307,11 +308,12 @@ def search_ani(fnum, frontier, squares):
     player, board, agents = frontier.pop()
     board.draw_board(squares)
 
-    plt.title("...{} nodes in search frontier".format(len(frontier)))
+    plt.title("{} moves played, {} games completed".format(statistics['moves_played'], statistics['games_finished']))
 
     for k in range(4):
         moves = expand_node(board, agents[player])
         if moves:
+            statistics['moves_played'] += len(moves)
             for i, r, x, y in moves:
                 b = board.copy()
                 b.place_piece(y, x, r, player + 1)
@@ -320,6 +322,8 @@ def search_ani(fnum, frontier, squares):
                 frontier.append(((player + 1) % NUM_PLAYERS, b, a))
             return
         player = (player + 1) % NUM_PLAYERS
+
+    statistics['games_finished'] += 1
 
 
 """
@@ -370,12 +374,14 @@ squares = np.array([[RegularPolygon((i + 0.5, j + 0.5), numVertices=4, radius=0.
     orientation=np.pi / 4, ec="#000000", fc="#ffffff") for j in range(NUM_COLS)] for i in range(NUM_ROWS)])
 [ax.add_patch(sq) for sq in squares.flat]
 
-if True:
+statistics = {'games_finished': 0, 'moves_played': 0}
+if False:
     animation.FuncAnimation(fig, ani, interval=100, repeat=False, fargs=(initial_agents, initial_board, squares), frames=84)
 else:
     frontier = deque()
     frontier.append((0, initial_board, initial_agents))
-    animation.FuncAnimation(fig, search_ani, interval=10, fargs=(frontier, squares))
+    ani = animation.FuncAnimation(fig, search_ani, interval=10, fargs=(frontier, squares, statistics))
+    #ani.save("blokus.mp4", writer="ffmpeg", fps=30, extra_args=['-vcodec', 'libxvid'])
 
 plt.show()
 
