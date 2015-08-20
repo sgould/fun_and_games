@@ -302,29 +302,30 @@ if False:
 
 def search_ani(fnum, frontier, squares, statistics):
 
-    if not frontier:
-        return
+    while True:
+        if not frontier: return
+        player, board, agents = frontier.pop()
 
-    player, board, agents = frontier.pop()
-    board.draw_board(squares)
+        made_move = False
+        for k in range(4):
+            moves = expand_node(board, agents[player])
+            if moves:
+                statistics['moves_played'] += len(moves)
+                for i, r, x, y in moves:
+                    b = board.copy()
+                    b.place_piece(y, x, r, player + 1)
+                    a = deepcopy(agents)
+                    a[player].remove_piece(i)
+                    frontier.append(((player + 1) % NUM_PLAYERS, b, a))
+                made_move = True
+                break
+            player = (player + 1) % NUM_PLAYERS
 
-    plt.title("{} moves played, {} games completed".format(statistics['moves_played'], statistics['games_finished']))
-
-    for k in range(4):
-        moves = expand_node(board, agents[player])
-        if moves:
-            statistics['moves_played'] += len(moves)
-            for i, r, x, y in moves:
-                b = board.copy()
-                b.place_piece(y, x, r, player + 1)
-                a = deepcopy(agents)
-                a[player].remove_piece(i)
-                frontier.append(((player + 1) % NUM_PLAYERS, b, a))
+        if not made_move:
+            statistics['games_finished'] += 1
+            board.draw_board(squares)
+            plt.title("{} moves played, {} games completed".format(statistics['moves_played'], statistics['games_finished']))
             return
-        player = (player + 1) % NUM_PLAYERS
-
-    statistics['games_finished'] += 1
-
 
 """
 first_ply = expand_node(initial_board, initial_agents[0])
@@ -380,7 +381,7 @@ if False:
 else:
     frontier = deque()
     frontier.append((0, initial_board, initial_agents))
-    ani = animation.FuncAnimation(fig, search_ani, interval=10, fargs=(frontier, squares, statistics))
+    ani = animation.FuncAnimation(fig, search_ani, interval=100, fargs=(frontier, squares, statistics))
     #ani.save("blokus.mp4", writer="ffmpeg", fps=30, extra_args=['-vcodec', 'libxvid'])
 
 plt.show()
