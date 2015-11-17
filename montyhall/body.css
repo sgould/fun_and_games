@@ -71,6 +71,21 @@ div.linkbar a:active {text-decoration:underline; color:#ffffff;}
     color: #000000;
 }
 
+.resultsTable {
+    margin-left: 0px;
+    border-collapse: collapsed;
+    border: 2px solid #6b7688;
+    border-spacing: 0px;
+    font: 10pt verdana, tahoma, arial, san serif;
+    text-align: center;
+    color: #000000;
+}
+
+table.resultsTable td {
+    padding: 10px;
+    border: 1px solid #cccccc;
+}
+
 .showSelected { }
 .showAll { }
 

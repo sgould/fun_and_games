@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 <title>Stephen Gould---Monty Hall Problem</title>
@@ -10,6 +10,7 @@ var prizeDoor = Math.floor((Math.random() * 3) + 1);
 var initialDoor = 0;
 var selectedDoor = 0;
 var revealedDoor = 0;
+var gameResults = [0, 0, 0, 0];
 <!-- preload -->
 var imgs = new Array();
 function preload() {
@@ -44,6 +45,7 @@ function restart() {
     document.getElementById("reveal_controls").style.display = "none";
     document.getElementById("open_controls").style.display = "none";
     document.getElementById("restart_controls").style.display = "none";
+    document.getElementById("results").style.visibility = "hidden";
 }
 <!-- reveal -->
 function reveal() {
@@ -112,6 +114,8 @@ function openDoor() {
     } else {
         document.getElementById("win_lose").innerHTML = "lost";
     }
+
+    updateResults();
 }
 <!-- door click -->
 function doorClick(id) {
@@ -138,6 +142,18 @@ function doorClick(id) {
             document.getElementById("switch_button").innerHTML = "switch back";
         }
     }
+}
+<!-- update results -->
+function updateResults() {
+    var indx = (selectedDoor == initialDoor ? 2 : 0) + (selectedDoor == prizeDoor ? 0 : 1);
+    gameResults[indx] += 1;
+
+    document.getElementById("R11").innerHTML = gameResults[0];
+    document.getElementById("R12").innerHTML = gameResults[1];
+    document.getElementById("R21").innerHTML = gameResults[2];
+    document.getElementById("R22").innerHTML = gameResults[3];
+
+    document.getElementById("results").style.visibility = "visible";
 }
 </script>
 
@@ -174,8 +190,8 @@ your choice?</i>
 
 You can read more about the Monty Hall Problem in a great
 <a href="http://en.wikipedia.org/wiki/Monty_hall_problem">Wikipedia article</a>.
-
 </div>
+
 <div class="body">
 <span class="sectionTitle">Play</span><br>
 
@@ -230,8 +246,20 @@ and <b><span id="win_lose">won or lost</span></b>!
 </table>
 </div>
 
+<!-- results -->
+<div class="body" id="results" style="visibility: hidden;">
+<span class="sectionTitle">Cummulative Results</span><br>
+<center>
+<table class="resultsTable">
+<tr><td></td><td><b>Won</b></td><td><b>Lost</b></td></tr>
+<tr><td><b>Switched</b></td><td><span id="R11">0</span></td><td><span id="R12">0</span></td></tr>
+<tr><td><b>Stayed</b></td><td><span id="R21">0</span></td><td><span id="R22">0</span></td></tr>
+</table>
+</center>
+</div>
+
 <div class="copyright">
-Copyright &copy; 2014--2015, Stephen Gould.
+Copyright &copy; 2014&ndash;2015, Stephen Gould.
 </div>
 
 </body>
