@@ -20,6 +20,7 @@
   var video = null;
   var canvas = null;
   var photos = null;
+  var donebtn = null;
 
   function startup() {
     video = document.getElementById('video');
@@ -29,6 +30,7 @@
     photos[1] = document.getElementById('photo2');
     photos[2] = document.getElementById('photo3');
     photos[3] = document.getElementById('photo4');
+    donebtn = document.getElementById('capture_done');
 
     navigator.getMedia = ( navigator.getUserMedia ||
                            navigator.webkitGetUserMedia ||
@@ -84,6 +86,22 @@
 
       photos[i].addEventListener('click', callback, false);
     }
+
+    donebtn.addEventListener('click', function(ev){
+      document.getElementById('camera_view').style.display = 'none';
+      // remove event listeners from photos
+      for (var i = 0; i < 4; i++) {
+        photos[i].parentNode.replaceChild(photos[i].cloneNode(true), photos[i]);
+      }
+
+      if (video.mozSrcObject) {
+        video.mozSrcObject.stop();
+        video.src = null;
+      } else {
+        video.src = "";
+      }
+      ev.preventDefault();
+    }, false);
 
     clearphotos();
   }
