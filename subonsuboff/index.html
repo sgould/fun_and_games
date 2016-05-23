@@ -4,14 +4,14 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <meta name="author" content="Stephen Gould"/>
-<title>Coach's Assistant</title>
+<title>SubOnSubOff</title>
 <link rel="stylesheet" href="body.css" type="text/css"/>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="apple-touch-icon.png">
 
 <script type="text/javascript">
 // configuration
-var config = {version: 100, resetSeconds: 20 * 60, updateInterval: 1, vibrateInterval: 0, 
+var config = {version: 100, resetSeconds: 20 * 60, updateInterval: 1, vibrateInterval: 0,
   gridView: false, highContrast: false, names: []};
 var startOnGameScreen = false;
 if (typeof(Storage) !== "undefined") {
@@ -68,7 +68,7 @@ function initializeGame() {
     var p = {index: i, name: config.names[i].trim(), totalTime: 0, currTime: 0, active: true};
     players.push(p);
   }
-  
+
   document.getElementById("input_tm").value = config.resetSeconds / 60;
   document.getElementById("input_up").value = config.updateInterval;
   document.getElementById("input_vb").value = config.vibrateInterval;
@@ -276,7 +276,7 @@ function onTimer() {
       case 1: players.sort(function(a, b){return a.totalTime - b.totalTime}); break;
       case 2: players.sort(function(a, b){return a.currTime - b.currTime}); break;
     }
-    initPlayerView();    
+    initPlayerView();
   }
 
   // update gui
@@ -344,7 +344,7 @@ function update() {
 <body onload="initializeGame(); if (startOnGameScreen) { showGame(); } else { showConfigStart(); }">
 
 <div id="main" style="display:none;">
-<span class="game_title">Coach's Assistant</span>
+<span class="game_title">SubOnSubOff</span>
 <br>
 <div class="game_timer" id="game_timer">
 <span id="game_clock">20:00</span>
@@ -373,7 +373,7 @@ function update() {
 </div>
 
 <div id="config" style="display:none;">
-<span class="game_title">Coach's Assistant Configuration</span>
+<span class="game_title">SubOnSubOff Configuration</span>
 <p>
 
 <center>
@@ -420,10 +420,10 @@ function update() {
 </div>
 
 <div id="help" style="display:none;">
-<span class="game_title">Coach's Assistant Help</span>
+<span class="game_title">SubOnSubOff Help</span>
 <p>
 <div class="help">
-<b>Coach's Assistant</b> is a simple-to-use app for managing player
+<b>SubOnSubOff</b> is a simple-to-use app for managing player
 substitutions in amatuer sports. Best of all it's free and you do not
 need to install any software (it runs in the browser on your phone).
 <p>
@@ -449,7 +449,7 @@ In <i>list view</i> you can sort the players by tapping on the
 column headers. For example, tap on <b>Time Played</b> to sort the
 list by the amount of time each player has been on the field. This
 allows you to quickly determine who should be substituted next.
-Tapping the <b>Time Played</b> heading twice will re-sort on each 
+Tapping the <b>Time Played</b> heading twice will re-sort on each
 update.
 <p>
 

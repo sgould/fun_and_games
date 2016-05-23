@@ -265,6 +265,21 @@ class Board(object):
 # TESTING
 import sys
 
+def leading_by(agents, player):
+    """Determine difference between player's score and closest opponent."""
+    scores = [a.score() for a in agents]
+    player_score = scores[player]
+    scores.sort()
+    if player_score == scores[-1]:
+        return player_score - scores[-2]
+    else:
+        return player_score - scores[-1]
+
+def winner(agents):
+    """Returns the winner and score difference to closest opponent."""
+    scores = sorted([(a.score(), a.id) for a in agents])
+    return (scores[-1][1], scores[-1][0] - scores[-2][0])
+
 def expand_node(board, agent):
     children = deque()
     cells = board.get_free_cells(agent.id)
@@ -284,7 +299,7 @@ initial_board = Board()
 if False:
     frontier = deque()
     frontier.append((0, initial_board.copy(), deepcopy(initial_agents)))
-    for n in range(1 + 58 + 58 * 4):
+    for n in range(1 + 58 + 58 * 4 + 58 * 4 * 58 * 2):
         player, board, agents = frontier.pop()
 
         moves = expand_node(board, agents[player])
@@ -302,9 +317,7 @@ if False:
 
 def search_ani(fnum, frontier, squares, statistics):
 
-    counter  = 0
     while True:
-        counter += 1
         if not frontier: return
         player, board, agents = frontier.pop()
 
@@ -326,9 +339,9 @@ def search_ani(fnum, frontier, squares, statistics):
         if not made_move:
             statistics['games_finished'] += 1
             board.draw_board(squares)
-            plt.title("{} moves played, {} games completed".format(statistics['moves_played'], statistics['games_finished']))
-
-        if counter % 100 == 0:
+            win_player, win_by = winner(agents)
+            plt.title("{} wins by {}".format(["BLUE", "YELLOW", "RED", "GREEN"][win_player - 1], win_by))
+            #plt.title("{} moves played, {} games completed".format(statistics['moves_played'], statistics['games_finished']))
             return
 
 """
