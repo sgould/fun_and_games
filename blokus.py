@@ -302,7 +302,9 @@ if False:
 
 def search_ani(fnum, frontier, squares, statistics):
 
+    counter  = 0
     while True:
+        counter += 1
         if not frontier: return
         player, board, agents = frontier.pop()
 
@@ -325,6 +327,8 @@ def search_ani(fnum, frontier, squares, statistics):
             statistics['games_finished'] += 1
             board.draw_board(squares)
             plt.title("{} moves played, {} games completed".format(statistics['moves_played'], statistics['games_finished']))
+
+        if counter % 100 == 0:
             return
 
 """
