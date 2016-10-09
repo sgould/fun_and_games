@@ -54,6 +54,7 @@ def check_for_duplicates(paths, hash=hashlib.sha1):
                 hashes_by_size[file_size].append(full_path)
 
     # iterate through files of the same size getting their hash on the first chunk
+    print("...{} files found".format(file_count))
     print("searching over {} sets by size...".format(len(hashes_by_size)))
     count = 0
     next_update = STATUS_UPDATE
@@ -72,7 +73,12 @@ def check_for_duplicates(paths, hash=hashlib.sha1):
                 print("...{} of {} files processed ({} duplicates found)".format(count, file_count, dup_count))
                 next_update = count + STATUS_UPDATE - (count % STATUS_UPDATE)
 
-            small_hash = get_hash(filename, first_chunk_only=True)
+            try:
+                small_hash = get_hash(filename, first_chunk_only=True)
+            except (IOError,):
+                print("WARNING: could not compute hash on {}".format(filename))
+                continue
+
             if small_hash not in hashes_on_chunk:
                 hashes_on_chunk[small_hash] = []
             hashes_on_chunk[small_hash].append(filename)
@@ -84,18 +90,22 @@ def check_for_duplicates(paths, hash=hashlib.sha1):
 
             hashes_full = {}
             for filename in files2:
-                full_hash = get_hash(filename, first_chunk_only=False)
+                try:
+                    full_hash = get_hash(filename, first_chunk_only=False)
+                except (IOError,):
+                    print("WARNING: could not compute hash on {}".format(filename))
+                    continue
 
-                duplicate = hashes_full.get(full_hash)
-                if duplicate:
+                original = hashes_full.get(full_hash)
+                if original:
                     dup_count += 1
                     if VERBOSE:
-                        print("...duplicate found: {} and {}".format(filename, duplicate))
+                        print("...duplicate found: {} and {}".format(filename, original))
                     if DO_DELETE:
                         try:
                             os.remove(filename)
-                        except (OSError,):
-                            print("WARNING: could not delete {}".format(filename))                            
+                        except (OSError, IOError):
+                            print("WARNING: could not delete {}".format(filename))                       
                 else:
                     # record first file with full_hash (the rest are duplicates)
                     hashes_full[full_hash] = filename
