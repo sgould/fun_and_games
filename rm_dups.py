@@ -109,18 +109,19 @@ def usage(result=1):
     """Print usage statement."""
     print("USAGE: python " + sys.argv[0] + " [<OPTIONS>] (<DIRECTORY>)+")
     print("OPTIONS:")
-    print("  --update | -u <n>  :: change update rate")
-    print("  --verbose | -v     :: turn on verbose output")
-    print("  --delete           :: delete duplicates")
+    print("  --chunk|-c <n>   :: change chunk size (default: {})".format(CHUNK_SIZE))
+    print("  --update|-u <n>  :: change update rate (default: {})".format(STATUS_UPDATE))
+    print("  --verbose|-v     :: turn on verbose output")
+    print("  --delete         :: delete duplicates")
     sys.exit(result)
 
 
 def main():
-    global STATUS_UPDATE, VERBOSE, DO_DELETE
+    global CHUNK_SIZE, STATUS_UPDATE, VERBOSE, DO_DELETE
 
     # parse command line arguments
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "u:v", ["update=", "verbose", "delete"])
+        opts, args = getopt.getopt(sys.argv[1:], "c:u:v", ["chunk=", "update=", "verbose", "delete"])
     except getopt.GetoptError:
         usage()
 
@@ -128,7 +129,9 @@ def main():
         usage()
 
     for opt, arg in opts:
-        if opt in ("-u", "--update"):
+        if opt in ("-c", "--chunk"):
+            CHUNK_SIZE = max(1024, int(arg))
+        elif opt in ("-u", "--update"):
             STATUS_UPDATE = int(arg)
         elif opt in ("-v", "--verbose"):
             VERBOSE = True
