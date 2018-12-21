@@ -9,7 +9,9 @@ import re
 
 import seaborn as sea
 import matplotlib.pyplot as plt
-sea.set(font_scale=1.2)
+sea.set(font_scale=1.4)
+
+from datetime import datetime
 
 
 class GoogleScholarHTMLParser(HTMLParser):
@@ -73,12 +75,21 @@ if __name__ == "__main__":
     print("...{} total citations".format(parser.citeSummaryData[0]))
     #print(parser.citeCounts)
 
+    year_fraction = datetime.now().timetuple().tm_yday / 365.0
+    year_prediction = int(parser.citeCounts[-1] / year_fraction)
+    print("{:0.1f}% of year with {} citations ({} predicted)".format(100.0 * year_fraction, parser.citeCounts[-1], year_prediction))
+
     print("Plotting Citations...")
 
     plt.figure()
     width = 0.8
-    plt.bar(parser.citeYears, parser.citeCounts, width)
-    plt.plot([year + 0.5 * width for year in parser.citeYears], parser.citeCounts, 'ro-', lw=2)
+
+    #plt.bar(parser.citeYears[-1], year_prediction, width, color=[1.0, 1.0, 1.0])
+    #plt.plot([year + 0.5 * width for year in parser.citeYears[-2:]], [parser.citeCounts[-2], year_prediction], 'ko--', lw=2)
+
+    plt.bar(parser.citeYears, parser.citeCounts, width, color=[0.75, 0.75, 0.75])
+    plt.plot([year + 0.5 * width for year in parser.citeYears], parser.citeCounts, 'ko-', lw=2)
     plt.xticks([year + 0.5 * width for year in parser.citeYears], parser.citeYears)
     plt.xlabel('Year'); plt.ylabel('Citations')
+    plt.tight_layout(pad=0.2)
     plt.show()
