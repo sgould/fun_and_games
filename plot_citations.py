@@ -59,9 +59,21 @@ class GoogleScholarHTMLParser(HTMLParser):
 
 if __name__ == "__main__":
 
-    # Google Scholar page to process
+    # default Google Scholar page to process
     URL = r"https://scholar.google.com.au/citations?user=YvdzeM8AAAAJ&hl=en"
 
+    # request user input for Google Scholar URL
+    import tkinter as tk
+    from tkinter import simpledialog
+
+    app_wnd = tk.Tk()
+    app_wnd.withdraw()
+    URL = simpledialog.askstring("Plot Citations", "Enter the full URL for the Google Scholar page you wish to plot:",
+                                 initialvalue=URL, parent=app_wnd)
+    if URL is None:
+        exit(0)
+
+    # fetch Google Scholar page and extract statistics
     print("Fetching Google Scholar page...")
     response = urllib.request.urlopen(URL)
     html = str(response.read())
@@ -76,16 +88,20 @@ if __name__ == "__main__":
     #print(parser.citeCounts)
 
     year_fraction = datetime.now().timetuple().tm_yday / 365.0
-    year_prediction = int(parser.citeCounts[-1] / year_fraction)
-    print("{:0.1f}% of year with {} citations ({} predicted)".format(100.0 * year_fraction, parser.citeCounts[-1], year_prediction))
+    if datetime.now().timetuple().tm_year > parser.citeYears[-1]:
+        print("{:0.1f}% of year with no data for this year".format(100.0 * year_fraction))
+        year_prediction = 0
+    else:
+        year_prediction = int(parser.citeCounts[-1] / year_fraction)
+        print("{:0.1f}% of year with {} citations ({} predicted)".format(100.0 * year_fraction, parser.citeCounts[-1], year_prediction))
 
     print("Plotting Citations...")
 
     plt.figure()
     width = 0.8
 
-    #plt.bar(parser.citeYears[-1], year_prediction, width, color=[1.0, 1.0, 1.0])
-    #plt.plot([year + 0.5 * width for year in parser.citeYears[-2:]], [parser.citeCounts[-2], year_prediction], 'ko--', lw=2)
+    plt.bar(parser.citeYears[-1], year_prediction, width, color=[1.0, 1.0, 1.0])
+    plt.plot([year + 0.5 * width for year in parser.citeYears[-2:]], [parser.citeCounts[-2], year_prediction], 'ko--', lw=2)
 
     plt.bar(parser.citeYears, parser.citeCounts, width, color=[0.75, 0.75, 0.75])
     plt.plot([year + 0.5 * width for year in parser.citeYears], parser.citeCounts, 'ko-', lw=2)
