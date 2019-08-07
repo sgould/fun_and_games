@@ -107,5 +107,5 @@ else:
     plt.xlabel('Researcher (Name)'); plt.ylabel('Citations')
     plt.xticks(rotation=90)
 
-plt.legend(['Total', 'Last 5 Years', 'Current Year'])
+plt.legend(['Total', 'Last 5 Years', 'Current Year'], loc='upper left')
 plt.show()
