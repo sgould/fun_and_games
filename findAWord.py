@@ -78,7 +78,9 @@ def place_word(word, grid, overlap=0):
         for j in cols:
             shuffle(dirs)
             for d in dirs:
-                if check_placement(word, grid, (i, j), d) >= overlap:
+                # check if word overlaps by at least `overlap` but not the whole word
+                n = check_placement(word, grid, (i, j), d)
+                if overlap <= n < len(word):
                     for k in range(len(word)):
                         grid[i + k * d[0]][j + k * d[1]] = word[k]
                     return True
@@ -96,11 +98,10 @@ def fill_random_letters(grid):
 
 
 for word in words:
-    if not place_word(word, grid, 2):
-        if not place_word(word, grid, 1):
-            if not place_word(word, grid):
-                print("Could not place word {}".format(word))
-                exit(-1)
+    if not place_word(word, grid, 1):
+        if not place_word(word, grid):
+            print("Could not place word {}".format(word))
+            exit(-1)
 
 print(format_puzzle(grid))
 print("\n")
