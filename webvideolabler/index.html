@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Web Video Labeler</title>
+    <title>WebVidLib</title>
     <script type="text/javascript" src="webvidlib.js"></script>
     <script type="text/javascript">
         var v = null;
 
         function init() {
-            v = new WebVidLib("frame", "status");
+            v = new WebVidLib("frame", "navslider", "status");
 
             var loadVideoFile = function(event) {
                 var file = this.files[0];
@@ -22,14 +22,24 @@
     </script>
 </head>
 <body onload="init();">
-<h1>Web Video Labeler</h1>
+<h1>In-browser Video Annotation</h1>
 Copyright &copy; 2020, Stephen Gould<p/>
 
 <input type="file" accept="video/*" />
-<input type="submit" onClick="v.seekRandom()" value="seek to random frame" /><br/>
 <p/>
 
-<canvas id="frame" width="320" hieght="240">Browser not supported.</canvas>
+<div id="vidpanel" style="width: 1056px;">
+    <div id="filmstriptop" style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
+    <canvas id="frame" width="1056px" height="72px">Browser not supported.</canvas>
+    <div id="filmstripbot" style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
+    <br>
+    <div style="width: 100%;">
+        <input type="range" min="0" max="100" value="0" style="width: 100%;" id="navslider" oninput="v.seekTo(this.value)";>
+        <br>
+        <span style="float: right;" id="status">none</span>
+    </div>
+</div>
+
 <p/>
 <button onclick="v.seekTo(0)" type="button">&#x21e4;</button>
 <button onclick="v.seekAdv(-10)" type="button">&#x219e;</button>
@@ -38,7 +48,6 @@ Copyright &copy; 2020, Stephen Gould<p/>
 <button onclick="v.seekAdv(10)" type="button">&#x21a0;</button>
 <button onclick="v.seekTo(-1)" type="button">&#x21e5;</button>
 
-<span id="status">none</span>
 
 
 </body>
