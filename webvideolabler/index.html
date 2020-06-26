@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Video Labeler</title>
+    <script type="text/javascript" src="webvidlib.js"></script>
+    <script type="text/javascript">
+        var v = null;
+
+        function init() {
+            v = new WebVidLib("frame", "status");
+
+            var loadVideoFile = function(event) {
+                var file = this.files[0];
+                var fileURL = URL.createObjectURL(file);
+                v.loadVideo(fileURL);
+            }
+
+            var input = document.querySelector('input');
+            input.addEventListener('change', loadVideoFile, false);
+        }
+    </script>
+</head>
+<body onload="init();">
+<h1>Web Video Labeler</h1>
+Copyright &copy; 2020, Stephen Gould<p/>
+
+<input type="file" accept="video/*" />
+<input type="submit" onClick="v.seekRandom()" value="seek to random frame" /><br/>
+<p/>
+
+<canvas id="frame" width="320" hieght="240">Browser not supported.</canvas>
+<p/>
+<button onclick="v.seekTo(0)" type="button">&#x21e4;</button>
+<button onclick="v.seekAdv(-10)" type="button">&#x219e;</button>
+<button onclick="v.seekAdv(-1)" type="button">&larr;</button>
+<button onclick="v.seekAdv(1)" type="button">&rarr;</button>
+<button onclick="v.seekAdv(10)" type="button">&#x21a0;</button>
+<button onclick="v.seekTo(-1)" type="button">&#x21e5;</button>
+
+<span id="status">none</span>
+
+
+</body>
+</html>
