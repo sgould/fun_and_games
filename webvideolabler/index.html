@@ -30,7 +30,7 @@ Copyright &copy; 2020, Stephen Gould<p/>
 
 <div id="vidpanel" style="width: 1056px;">
     <div id="filmstriptop" style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
-    <canvas id="frame" width="1056px" height="72px">Browser not supported.</canvas>
+    <canvas id="frame" width="1056px" height="72px" style="display: block;"></canvas>
     <div id="filmstripbot" style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
     <br>
     <div style="width: 100%;">
@@ -39,16 +39,6 @@ Copyright &copy; 2020, Stephen Gould<p/>
         <span style="float: right;" id="status">none</span>
     </div>
 </div>
-
-<p/>
-<button onclick="v.seekTo(0)" type="button">&#x21e4;</button>
-<button onclick="v.seekAdv(-10)" type="button">&#x219e;</button>
-<button onclick="v.seekAdv(-1)" type="button">&larr;</button>
-<button onclick="v.seekAdv(1)" type="button">&rarr;</button>
-<button onclick="v.seekAdv(10)" type="button">&#x21a0;</button>
-<button onclick="v.seekTo(-1)" type="button">&#x21e5;</button>
-
-
 
 </body>
 </html>
