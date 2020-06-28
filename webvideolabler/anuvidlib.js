@@ -1,6 +1,5 @@
 /*******************************************************************************
-** WEBVIDLIB: A Javascript library for web-based video annotation.
-**
+** ANUVIDLIB: A Javascript library for web-based video annotation.
 ** Copyright (C) 2020, Stephen Gould <stephen.gould@anu.edu.au>
 **
 ** TODO:
@@ -10,8 +9,6 @@
 *******************************************************************************/
 
 const FPS = 10;     // temporal resolution (frames per second)
-const XRES = 96;    // x-resolution for storing frames
-const YRES = 72;    // y-resolution for storing frames
 
 /*
 ** Drawing utilities.
@@ -45,14 +42,133 @@ function triangle(ctx, ax, ay, bx, by, cx, cy) {
 }
 
 /*
-** Video Manager. Responsible for extracting and caching video frames. Uses the HTML5
-** video element so timing may not be exact.
+** In-browser Video Labeler. Responsible for video rendering and user I/O.
 */
-class ANUVidMgr {
+class ANUVidLib {
+    // Constants.
+    static get LEFT() { return 0; }
+    static get RIGHT() { return 1; }
+    static get BOTH() { return -1; }
 
+    // Construct an ANUVidLib object with two canvases for displaying frames and text spans for showing status
+    // information. Caches frames every second for faster scrolling (TODO).
+    constructor(leftCanvasName, leftSliderName, leftStatusName, rightCanvasName, rightSliderName, rightStatusName) {
+        var self = this;
 
-    getFrame(index, callback) {
-        // TODO
+        this.video = document.createElement("video");
+        this.leftCanvas = document.getElementById(leftCanvasName);
+        this.leftSlider = document.getElementById(leftSliderName);
+        this.leftStatus = document.getElementById(leftStatusName);
+        this.leftFrame = new Image();
+        this.leftFrame.onload = function() { self.redraw(ANUVidLib.LEFT); };
+
+        this.rightCanvas = document.getElementById(rightCanvasName);
+        this.rightSlider = document.getElementById(rightSliderName);
+        this.rightStatus = document.getElementById(rightStatusName);
+        this.rightFrame = new Image();
+        this.rightFrame.onload = function() { self.redraw(ANUVidLib.RIGHT); };
+
+        this.frameCache = [];
+
+        this.video.addEventListener('loadeddata', function() {
+            self.resize();
+            //self.leftFrame = new Image();
+            //self.rightFrame = new Image();
+            self.leftSlider.max = Math.floor(FPS * self.video.duration);
+            self.leftSlider.value = 0;
+            self.rightSlider.max = Math.floor(FPS * self.video.duration);
+            self.rightSlider.value = 0;
+            self.frameCache.length = Math.floor(self.video.duration); // space for 1 frame per second
+            self.frameCache.fill(null);
+            self.seekTo(0, 0);
+        }, false);
+
+        this.video.addEventListener('seeked', function() {
+            // extract the frame and redraw
+            console.log("updating left frame (" + self.video.videoWidth + ", " + self.video.videoHeight + ")")
+            const canvas = document.createElement("canvas");
+            canvas.width = self.video.videoWidth;
+            canvas.height = self.video.videoHeight;
+            canvas.getContext('2d').drawImage(self.video, 0, 0, canvas.width, canvas.height);
+            //self.leftFrame.onload = function() { self.redraw(ANUVidLib.LEFT); };
+            self.leftFrame.src = canvas.toDataURL("image/jpeg");
+        }, false);
+
+        this.resize();
+        window.addEventListener('resize', function() { self.resize(); }, false);
+    }
+
+    loadVideo(fileURL) {
+        this.video.src = fileURL;
+    }
+
+    // Seek to a specific index in the video. A negative number means backwards from the end.
+    seekTo(leftIndex, rightIndex) {
+        console.log("seeking to (" + leftIndex + ", " + rightIndex + ")")
+
+        if (isNaN(this.video.duration)) {
+            this.leftStatus.innerHTML = "none";
+            this.rightStatus.innerHTML = "none";
+            return;
+        }
+
+        if (leftIndex < 0) {
+            leftIndex = FPS * this.video.duration + leftIndex + 1;
+        }
+        if (rightIndex < 0) {
+            rightIndex = FPS * this.video.duration + rightIndex + 1;
+        }
+
+        this.video.currentTime = Math.floor(Math.min(Math.max(0, leftIndex), FPS * this.video.duration), 0) / FPS;
+        this.leftStatus.innerHTML = (leftIndex / FPS).toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
+            this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
+        this.rightStatus.innerHTML = (rightIndex / FPS).toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
+            this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
+    }
+
+    // Resize canvas when window size changes of new video is loaded.
+    resize() {
+        this.leftCanvas.width = document.getElementById("leftpanel").clientWidth;
+        if (isNaN(this.video.duration)) {
+            this.leftCanvas.height = 9 / 16 * this.leftCanvas.width;
+        } else {
+            console.log(Math.floor(this.leftCanvas.width * this.video.videoHeight / this.video.videoWidth));
+            this.leftCanvas.height = Math.floor(this.leftCanvas.width * this.video.videoHeight / this.video.videoWidth);
+        }
+        this.rightCanvas.width = this.leftCanvas.width;
+        this.rightCanvas.height = this.leftCanvas.height;
+
+        this.redraw(ANUVidLib.BOTH);
+    }
+
+    // Redraw frames and annotations.
+    redraw(side) {
+        if (side == ANUVidLib.BOTH) {
+            this.redraw(ANUVidLib.LEFT);
+            this.redraw(ANUVidLib.RIGHT);
+            return;
+        }
+
+        console.assert((side == ANUVidLib.LEFT) || (side == ANUVidLib.RIGHT), "invalid side")
+        console.log("redrawing " + side)
+
+        // draw left frame
+        if (side == ANUVidLib.LEFT) {
+            var context = this.leftCanvas.getContext('2d');
+            context.drawImage(this.leftFrame, 0, 0, this.leftCanvas.width, this.leftCanvas.height);
+
+            // draw border
+            context.lineWidth = 7; context.strokeStyle = "#ffffff";
+            roundedRect(context, 0, 0, this.leftCanvas.width, this.leftCanvas.height, 9);
+            context.stroke();
+            context.lineWidth = 5; context.strokeStyle = "#000000";
+            context.strokeRect(0, 0, this.leftCanvas.width, this.leftCanvas.height);
+            roundedRect(context, 0, 0, this.leftCanvas.width, this.leftCanvas.height, 9);
+            context.stroke();
+        }
+
+        // draw right frame
+        // TODO: remove replicated code
     }
 }
 

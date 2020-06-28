@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>WebVidLib</title>
-    <script type="text/javascript" src="webvidlib.js"></script>
+    <title>ANUCVML Video Annotation Tool</title>
+    <script type="text/javascript" src="anuvidlib.js"></script>
     <script type="text/javascript">
         var v = null;
 
         function init() {
-            v = new WebVidLib("frame", "navslider", "status");
+            v = new ANUVidLib("leftframe", "leftslider", "leftstatus", "rightframe", "rightslider", "rightstatus");
 
             var loadVideoFile = function(event) {
                 var file = this.files[0];
@@ -22,22 +22,57 @@
     </script>
 </head>
 <body onload="init();">
-<h1>In-browser Video Annotation</h1>
+<h1>ANU CVML In-browser Video Annotation Tool</h1>
 Copyright &copy; 2020, Stephen Gould<p/>
 
 <input type="file" accept="video/*" />
 <p/>
 
-<div id="vidpanel" style="width: 1056px;">
-    <div id="filmstriptop" style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
-    <canvas id="frame" width="1056px" height="72px" style="display: block;"></canvas>
-    <div id="filmstripbot" style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
-    <br>
-    <div style="width: 100%;">
-        <input type="range" min="0" max="100" value="0" style="width: 100%;" id="navslider" oninput="v.seekTo(this.value)";>
+<!--
+TODO:
+1. resize and redraw left and right canvas with window
+2. rounded rectangle boundary
+3. left/right tracking
+4. buffer video frames every second for faster scrolling
+-->
+
+<div id="container" style="width: 100%;">
+    <div id="leftpanel" style="width: 45%; float: left;">
+        <div style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
+        <canvas id="leftframe" width="640px" height="480px" style="display: block;"></canvas>
+        <div style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
         <br>
-        <span style="float: right;" id="status">none</span>
+        <div style="width: 100%;">
+            <input type="range" min="0" max="100" value="0" style="width: 100%;" id="leftslider" oninput="v.seekTo(this.value, 0)";>
+            <br>
+            <span style="float: right;" id="leftstatus">none</span>
+        </div>
     </div>
+    <div id="centerpanel" style="width: 10%; float: left; text-align: center; position: relative;">
+        <br><p/>
+        <b>Copy Annotations</b><br><p/>
+        <button onclick="TODO" type="button" style="width: 50%;">&rarr;</button><p/>
+        <button onclick="TODO" type="button" style="width: 50%;">&#8608;</button><p/>
+        <br><p/>
+        <button onclick="TODO" type="button" style="width: 50%;">&larr;</button><p/>
+        <button onclick="TODO" type="button" style="width: 50%;">&#8606;</button><p/>
+        <br><p/>
+        <b>Tracking</b><br><p/>
+        <input id="trackcb" type="checkbox">
+        <label for="trackcb">Track Sliders</label><br>
+    </div>
+    <div id="rightpanel" style="width: 45%; float:left;">
+        <div style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
+        <canvas id="rightframe" width="640px" height="480px" style="display: block;"></canvas>
+        <div style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
+        <br>
+        <div style="width: 100%;">
+            <input type="range" min="0" max="100" value="0" style="width: 100%;" id="rightslider" oninput="v.seekTo(0, this.value)";>
+            <br>
+            <span style="float: right;" id="rightstatus">none</span>
+        </div>
+    </div>
+    <div style="clear: both;"></div>
 </div>
 
 </body>
