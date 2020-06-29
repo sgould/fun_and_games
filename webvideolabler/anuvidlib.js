@@ -32,15 +32,6 @@ function roundedRect(ctx, x, y, width, height, rounded) {
     ctx.closePath();
 }
 
-// Draw a triangle path for stroking or filling.
-function triangle(ctx, ax, ay, bx, by, cx, cy) {
-    ctx.beginPath();
-    ctx.moveTo(ax, ay);
-    ctx.lineTo(bx, by);
-    ctx.lineTo(cx, cy);
-    ctx.closePath();
-}
-
 /*
 ** In-browser Video Labeler. Responsible for video rendering and user I/O.
 */
@@ -56,42 +47,56 @@ class ANUVidLib {
         var self = this;
 
         this.video = document.createElement("video");
-        this.leftCanvas = document.getElementById(leftCanvasName);
-        this.leftSlider = document.getElementById(leftSliderName);
-        this.leftStatus = document.getElementById(leftStatusName);
-        this.leftFrame = new Image();
-        this.leftFrame.onload = function() { self.redraw(ANUVidLib.LEFT); };
 
-        this.rightCanvas = document.getElementById(rightCanvasName);
-        this.rightSlider = document.getElementById(rightSliderName);
-        this.rightStatus = document.getElementById(rightStatusName);
-        this.rightFrame = new Image();
-        this.rightFrame.onload = function() { self.redraw(ANUVidLib.RIGHT); };
+        this.leftPanel = {
+            side: ANUVidLib.LEFT,
+            canvas: document.getElementById(leftCanvasName),
+            slider: document.getElementById(leftSliderName),
+            status: document.getElementById(leftStatusName),
+            frame: new Image(),
+            timestamp: null
+        };
+        this.leftPanel.frame.onload = function() { self.redraw(ANUVidLib.LEFT); };
+
+        this.rightPanel = {
+            side: ANUVidLib.RIGHT,
+            canvas: document.getElementById(rightCanvasName),
+            slider: document.getElementById(rightSliderName),
+            status: document.getElementById(rightStatusName),
+            frame: new Image(),
+            timestamp: null
+        };
+        this.rightPanel.frame.onload = function() { self.redraw(ANUVidLib.RIGHT); };
 
         this.frameCache = [];
 
         this.video.addEventListener('loadeddata', function() {
             self.resize();
-            //self.leftFrame = new Image();
-            //self.rightFrame = new Image();
-            self.leftSlider.max = Math.floor(FPS * self.video.duration);
-            self.leftSlider.value = 0;
-            self.rightSlider.max = Math.floor(FPS * self.video.duration);
-            self.rightSlider.value = 0;
+            self.leftPanel.slider.max = Math.floor(FPS * self.video.duration);
+            self.leftPanel.slider.value = 0;
+            self.leftPanel.timestamp = null;
+            self.rightPanel.slider.max = Math.floor(FPS * self.video.duration);
+            self.rightPanel.slider.value = 0;
+            self.rightPanel.timestamp = null;
             self.frameCache.length = Math.floor(self.video.duration); // space for 1 frame per second
             self.frameCache.fill(null);
             self.seekTo(0, 0);
         }, false);
 
         this.video.addEventListener('seeked', function() {
-            // extract the frame and redraw
+            // extract the frame and redraw (triggered by onload)
             console.log("updating left frame (" + self.video.videoWidth + ", " + self.video.videoHeight + ")")
             const canvas = document.createElement("canvas");
             canvas.width = self.video.videoWidth;
             canvas.height = self.video.videoHeight;
             canvas.getContext('2d').drawImage(self.video, 0, 0, canvas.width, canvas.height);
-            //self.leftFrame.onload = function() { self.redraw(ANUVidLib.LEFT); };
-            self.leftFrame.src = canvas.toDataURL("image/jpeg");
+
+            self.leftPanel.frame.src = canvas.toDataURL("image/jpeg");
+
+            // cache frame if on 1 second boundary
+            if (self.video.currentTime == Math.floor(self.video.currentTime)) {
+                self.frameCache[self.video.currentTime] = canvas.toDataURL("image/jpeg");
+            }
         }, false);
 
         this.resize();
@@ -102,13 +107,13 @@ class ANUVidLib {
         this.video.src = fileURL;
     }
 
-    // Seek to a specific index in the video. A negative number means backwards from the end.
+    // Seek to a specific index in the video. A negative number means don't update.
     seekTo(leftIndex, rightIndex) {
         console.log("seeking to (" + leftIndex + ", " + rightIndex + ")")
 
         if (isNaN(this.video.duration)) {
-            this.leftStatus.innerHTML = "none";
-            this.rightStatus.innerHTML = "none";
+            this.leftPanel.status.innerHTML = "none";
+            this.rightPanel.status.innerHTML = "none";
             return;
         }
 
@@ -119,29 +124,40 @@ class ANUVidLib {
             rightIndex = FPS * this.video.duration + rightIndex + 1;
         }
 
-        this.video.currentTime = Math.floor(Math.min(Math.max(0, leftIndex), FPS * this.video.duration), 0) / FPS;
-        this.leftStatus.innerHTML = (leftIndex / FPS).toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
+        leftIndex = Math.floor(Math.min(Math.max(0, leftIndex), FPS * this.video.duration), 0);
+        rightIndex = Math.floor(Math.min(Math.max(0, rightIndex), FPS * this.video.duration), 0);
+
+        if ((rightIndex % FPS == 0) && (this.frameCache[rightIndex / FPS] != null)) {
+            this.rightPanel.frame.src = this.frameCache[rightIndex / FPS];
+        }
+
+        if ((leftIndex % FPS == 0) && (this.frameCache[leftIndex / FPS] != null)) {
+            this.leftPanel.frame.src = this.frameCache[leftIndex / FPS];
+        } else {
+            this.video.currentTime = leftIndex / FPS;
+        }
+        this.leftPanel.status.innerHTML = (leftIndex / FPS).toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
             this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
-        this.rightStatus.innerHTML = (rightIndex / FPS).toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
+        this.rightPanel.status.innerHTML = (rightIndex / FPS).toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
             this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
     }
 
-    // Resize canvas when window size changes of new video is loaded.
+    // Resize left and right canvas when window size changes of new video is loaded.
     resize() {
-        this.leftCanvas.width = document.getElementById("leftpanel").clientWidth;
+        this.leftPanel.canvas.width = this.leftPanel.canvas.parentNode.clientWidth;
         if (isNaN(this.video.duration)) {
-            this.leftCanvas.height = 9 / 16 * this.leftCanvas.width;
+            this.leftPanel.canvas.height = 9 / 16 * this.leftPanel.canvas.width;
         } else {
-            console.log(Math.floor(this.leftCanvas.width * this.video.videoHeight / this.video.videoWidth));
-            this.leftCanvas.height = Math.floor(this.leftCanvas.width * this.video.videoHeight / this.video.videoWidth);
+            console.log(Math.floor(this.leftPanel.canvas.width * this.video.videoHeight / this.video.videoWidth));
+            this.leftPanel.canvas.height = Math.floor(this.leftPanel.canvas.width * this.video.videoHeight / this.video.videoWidth);
         }
-        this.rightCanvas.width = this.leftCanvas.width;
-        this.rightCanvas.height = this.leftCanvas.height;
+        this.rightPanel.canvas.width = this.leftPanel.canvas.width;
+        this.rightPanel.canvas.height = this.leftPanel.canvas.height;
 
         this.redraw(ANUVidLib.BOTH);
     }
 
-    // Redraw frames and annotations.
+    // Redraw frames and annotations. Parameter 'side' can be LEFT, RIGHT or BOTH.
     redraw(side) {
         if (side == ANUVidLib.BOTH) {
             this.redraw(ANUVidLib.LEFT);
@@ -154,182 +170,27 @@ class ANUVidLib {
 
         // draw left frame
         if (side == ANUVidLib.LEFT) {
-            var context = this.leftCanvas.getContext('2d');
-            context.drawImage(this.leftFrame, 0, 0, this.leftCanvas.width, this.leftCanvas.height);
-
-            // draw border
-            context.lineWidth = 7; context.strokeStyle = "#ffffff";
-            roundedRect(context, 0, 0, this.leftCanvas.width, this.leftCanvas.height, 9);
-            context.stroke();
-            context.lineWidth = 5; context.strokeStyle = "#000000";
-            context.strokeRect(0, 0, this.leftCanvas.width, this.leftCanvas.height);
-            roundedRect(context, 0, 0, this.leftCanvas.width, this.leftCanvas.height, 9);
-            context.stroke();
+            this.paint(this.leftPanel);
         }
 
         // draw right frame
-        // TODO: remove replicated code
-    }
-}
-
-/*
-** In-browser Video Labeler. Responsible to rendering and user I/O. In particular,
-** responds to the video slider, draws the filmstrips and current frame, shows status
-** information and handles annotation.
-*/
-class WebVidLib {
-    // Construct a WebVidLib object with a canvas for displaying frames and an
-    // text span for showing status information.
-    constructor(canvasName, sliderName, statusName) {
-        this.video = document.createElement("video");
-        this.offScreenCanvas = document.createElement("canvas");
-        this.offScreenCanvas.width = 96; this.offScreenCanvas.height = 72;
-
-        this.canvas = document.getElementById(canvasName);
-        this.slider = document.getElementById(sliderName);
-        this.status = document.getElementById(statusName);
-        this.frames = [];
-
-        var self = this;
-        this.video.addEventListener('loadeddata', function() {
-            self.slider.max = Math.floor(FPS * self.video.duration);
-            self.slider.value = "0";
-            self.frames.length = self.slider.max;
-            self.frames.fill(null);
-            self.seekTo(0);
-        }, false);
-
-        this.video.addEventListener('seeked', function() {
-            // extract the frame at the current index and redraw the filmstrip
-            console.log("seeked event: " + self.video.currentTime);
-            var indx = Math.floor(FPS * self.video.currentTime);
-            self.extractFrame(indx);
-            self.drawFilmStrip(indx, 5);
-        }, false);
-    }
-
-    // Extract and compress frame from the video.
-    extractFrame(indx) {
-        if (this.frames[indx] != null) {
-            console.log(this.frames[indx]);
-            return;
+        if (side == ANUVidLib.RIGHT) {
+            this.paint(this.rightPanel);
         }
-        var ctx = this.offScreenCanvas.getContext('2d');
-        ctx.drawImage(this.video, 0, 0, this.offScreenCanvas.width, this.offScreenCanvas.height);
-        this.frames[indx] = this.offScreenCanvas.toDataURL("image/jpeg");
     }
 
-    // Draw filmstrip centered on index and +/- window.
-    drawFilmStrip(indx, window) {
-        var numFrames = 2 * window + 1;
-        var startFrame = indx - window;
-        var dx = this.canvas.width / numFrames;
+    // Draw a frame and it's annotations.
+    paint(panel) {
+        var context = panel.canvas.getContext('2d');
+        context.drawImage(panel.frame, 0, 0, panel.canvas.width, panel.canvas.height);
 
-        //console.log(this.frames.length);
-
-        // draw each frame
-        var context = this.canvas.getContext('2d');
-        context.lineWidth = 3;
-        context.fillStyle = "#ffffff";
-        for (var i = 0; i < numFrames; i++) {
-            // TODO: replace with extracting from an array
-            if ((startFrame + i < 0) || (startFrame + i > Math.floor(FPS * this.video.duration))) {
-                console.log("cross " + (startFrame + i));
-                context.fillRect(i * dx, 0, dx, this.canvas.height);
-                context.strokeStyle = "#ff0000";
-                context.beginPath();
-                context.moveTo(i * dx, 0);
-                context.lineTo(i * dx + dx, this.canvas.height);
-                context.moveTo(i * dx + dx, 0);
-                context.lineTo(i * dx, this.canvas.height);
-                context.stroke();
-            } else if (this.frames[startFrame + i] != null) {
-                console.log("drawing existing " + (startFrame + i));
-                const image = new Image();
-
-                var helper = function(_i, _dx, _dy) {
-                    return function() {
-                        context.imageSmoothingEnabled = false;
-                        context.drawImage(image, _i * _dx, 0, _dx, _dy);
-                        console.log(_i);
-
-                        context.lineWidth = 3;
-                        context.strokeStyle = "#000000";
-                        context.strokeRect(_i * _dx,  1, _dx, _dy - 2);
-                        roundedRect(context, _i * _dx, 1, _dx, _dy - 2, 7);
-                        context.stroke();
-
-                        if (_i == window) {
-                            context.strokeStyle = "#ffffff";
-                            context.fillStyle = "#000000";
-                            triangle(context, _i * _dx + _dx / 2, 5, _i * _dx + _dx / 2 + 5, 0, _i * _dx + _dx / 2 - 5, 0);
-                            context.stroke(); context.fill();
-                            triangle(context, _i * _dx + _dx / 2, _dy - 5, _i * _dx + _dx / 2 + 5, _dy, _i * _dx + _dx / 2 - 5, _dy);
-                            context.stroke(); context.fill();
-                        }
-                    }
-                }
-                image.onload = helper(i, dx, this.canvas.height);
-
-                console.log("drawing existing " + this.frames[startFrame + i]);
-                image.src = this.frames[startFrame + i];
-            } else {
-                console.log("current frame " + (startFrame + i));
-                // TODO
-                //context.drawImage(this.video, i * dx, 0, dx, this.canvas.height);
-                console.log("cross " + (startFrame + i));
-                context.fillRect(i * dx, 0, dx, this.canvas.height);
-                context.strokeStyle = "#00ff00";
-                context.beginPath();
-                context.moveTo(i * dx, 0);
-                context.lineTo(i * dx + dx, this.canvas.height);
-                context.moveTo(i * dx + dx, 0);
-                context.lineTo(i * dx, this.canvas.height);
-                context.stroke();
-            }
-
-            context.strokeStyle = "#000000";
-            context.strokeRect(i * dx,  1, dx, this.canvas.height - 2);
-            roundedRect(context, i * dx, 1, dx, this.canvas.height - 2, 7);
-            context.stroke();
-        }
-
-        // draw indicator on center frame
-        var cx = window * dx + dx / 2;
-        context.strokeStyle = "#ffffff";
-        context.fillStyle = "#000000";
-        triangle(context, cx, 5, cx + 5, 0, cx - 5, 0);
-        context.stroke(); context.fill();
-        triangle(context, cx, this.canvas.height - 5, cx + 5, this.canvas.height, cx - 5, this.canvas.height);
-        context.stroke(); context.fill();
-    }
-
-    loadVideo(fileURL) {
-        this.video.src = fileURL;
-    }
-
-    // Seek to a specific index in the video. A negative number means backwards from the end.
-    seekTo(index) {
-        if (isNaN(this.video.duration)) {
-            this.status.innerHTML = "none";
-            return;
-        }
-
-        if (index < 0) {
-            index = FPS * this.video.duration + index + 1;
-        }
-
-        if (this.frames[index] != null) {
-            this.drawFilmStrip(index, 5);
-        } else {
-            this.video.currentTime = Math.floor(Math.min(Math.max(0, index), FPS * this.video.duration), 0) / FPS;
-            console.log("seekTo: " + this.video.currentTime);
-        }
-        this.status.innerHTML = (index / FPS).toFixed(2) + " / " + this.video.duration.toFixed(2) + "s";
-    }
-
-    // Seek to a location in the video relative to the current location.
-    seekAdv(inc) {
-        return this.seekTo(FPS * this.video.currentTime + inc);
+        // draw border
+        context.lineWidth = 7; context.strokeStyle = "#ffffff";
+        roundedRect(context, 0, 0, panel.canvas.width, panel.canvas.height, 9);
+        context.stroke();
+        context.lineWidth = 5; context.strokeStyle = "#000000";
+        context.strokeRect(0, 0, panel.canvas.width, panel.canvas.height);
+        roundedRect(context, 0, 0, panel.canvas.width, panel.canvas.height, 9);
+        context.stroke();
     }
 }

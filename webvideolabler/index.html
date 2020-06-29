@@ -30,10 +30,13 @@ Copyright &copy; 2020, Stephen Gould<p/>
 
 <!--
 TODO:
-1. resize and redraw left and right canvas with window
-2. rounded rectangle boundary
+X1. resize and redraw left and right canvas with window
+X2. rounded rectangle boundary
 3. left/right tracking
 4. buffer video frames every second for faster scrolling
+5. save configuration locally + configuration page/button
+6. help page/video tutorial
+7. annotation functionality
 -->
 
 <div id="container" style="width: 100%;">
@@ -49,7 +52,6 @@ TODO:
         </div>
     </div>
     <div id="centerpanel" style="width: 10%; float: left; text-align: center; position: relative;">
-        <br><p/>
         <b>Copy Annotations</b><br><p/>
         <button onclick="TODO" type="button" style="width: 50%;">&rarr;</button><p/>
         <button onclick="TODO" type="button" style="width: 50%;">&#8608;</button><p/>
@@ -59,7 +61,11 @@ TODO:
         <br><p/>
         <b>Tracking</b><br><p/>
         <input id="trackcb" type="checkbox">
-        <label for="trackcb">Track Sliders</label><br>
+        <label for="trackcb">Tie Sliders</label><br>
+        <br><p/>
+        <b>Appearance</b><br><p/>
+        <input id="greycb" type="checkbox">
+        <label for="greycb">Greyscale</label><br>
     </div>
     <div id="rightpanel" style="width: 45%; float:left;">
         <div style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
