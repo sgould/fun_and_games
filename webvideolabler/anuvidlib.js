@@ -40,6 +40,7 @@ class ANUVidLib {
     static get LEFT() { return 0; }
     static get RIGHT() { return 1; }
     static get BOTH() { return -1; }
+    static get NONE() { return -2; }
 
     // Construct an ANUVidLib object with two canvases for displaying frames and text spans for showing status
     // information. Caches frames every second for faster scrolling (TODO).
@@ -102,6 +103,7 @@ class ANUVidLib {
 
             // cache frame if on one second boundary
             if (self.video.currentTime == Math.floor(self.video.currentTime)) {
+                //console.log("caching frame at " + self.video.currentTime + " seconds");
                 self.frameCache[self.video.currentTime] = canvas.toDataURL("image/jpeg");
             }
 
@@ -138,6 +140,7 @@ class ANUVidLib {
                 this.vidRequestQ.push({timestamp: ts, who: ANUVidLib.LEFT});
             }
 
+            this.leftPanel.timestamp = ts;
             this.leftPanel.status.innerHTML = ts.toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
                 this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
         }
@@ -151,8 +154,16 @@ class ANUVidLib {
                 this.vidRequestQ.push({timestamp: ts, who: ANUVidLib.RIGHT});
             }
 
+            this.rightPanel.timestamp = ts;
             this.rightPanel.status.innerHTML = ts.toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
                 this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
+        }
+
+        // add remaining frames at one-second boundaries for caching
+        for (var i = 0; i < this.video.duration; i++) {
+            if (this.frameCache[i] == null) {
+                this.vidRequestQ.push({timestamp: i, who: ANUVidLib.NONE});
+            }
         }
 
         // trigger first video request
