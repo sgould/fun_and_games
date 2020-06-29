@@ -70,6 +70,8 @@ class ANUVidLib {
 
         this.frameCache = [];
 
+        this.vidRequestQ = []; // video queries (timestamp, who)
+
         this.video.addEventListener('loadeddata', function() {
             self.resize();
             self.leftPanel.slider.max = Math.floor(FPS * self.video.duration);
@@ -85,17 +87,28 @@ class ANUVidLib {
 
         this.video.addEventListener('seeked', function() {
             // extract the frame and redraw (triggered by onload)
-            console.log("updating left frame (" + self.video.videoWidth + ", " + self.video.videoHeight + ")")
             const canvas = document.createElement("canvas");
             canvas.width = self.video.videoWidth;
             canvas.height = self.video.videoHeight;
             canvas.getContext('2d').drawImage(self.video, 0, 0, canvas.width, canvas.height);
 
-            self.leftPanel.frame.src = canvas.toDataURL("image/jpeg");
+            // update the correct panel
+            console.assert(self.vidRequestQ.length > 0, "something went wrong");
+            if (self.vidRequestQ[0].who == ANUVidLib.LEFT) {
+                self.leftPanel.frame.src = canvas.toDataURL("image/jpeg");
+            } else if (self.vidRequestQ[0].who == ANUVidLib.RIGHT) {
+                self.rightPanel.frame.src = canvas.toDataURL("image/jpeg");
+            }
 
-            // cache frame if on 1 second boundary
+            // cache frame if on one second boundary
             if (self.video.currentTime == Math.floor(self.video.currentTime)) {
                 self.frameCache[self.video.currentTime] = canvas.toDataURL("image/jpeg");
+            }
+
+            // trigger next video query if there is one
+            self.vidRequestQ.shift();
+            if (self.vidRequestQ.length > 0) {
+                self.video.currentTime = self.vidRequestQ[0].timestamp;
             }
         }, false);
 
@@ -109,37 +122,43 @@ class ANUVidLib {
 
     // Seek to a specific index in the video. A negative number means don't update.
     seekTo(leftIndex, rightIndex) {
-        console.log("seeking to (" + leftIndex + ", " + rightIndex + ")")
-
         if (isNaN(this.video.duration)) {
             this.leftPanel.status.innerHTML = "none";
             this.rightPanel.status.innerHTML = "none";
             return;
         }
 
-        if (leftIndex < 0) {
-            leftIndex = FPS * this.video.duration + leftIndex + 1;
-        }
-        if (rightIndex < 0) {
-            rightIndex = FPS * this.video.duration + rightIndex + 1;
+        this.vidRequestQ = []
+        if (leftIndex >= 0) {
+            const index = Math.floor(Math.min(Math.max(0, leftIndex), FPS * this.video.duration), 0);
+            const ts = index / FPS;
+            if ((index % FPS == 0) && (this.frameCache[ts] != null)) {
+                this.leftPanel.frame.src = this.frameCache[ts];
+            } else {
+                this.vidRequestQ.push({timestamp: ts, who: ANUVidLib.LEFT});
+            }
+
+            this.leftPanel.status.innerHTML = ts.toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
+                this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
         }
 
-        leftIndex = Math.floor(Math.min(Math.max(0, leftIndex), FPS * this.video.duration), 0);
-        rightIndex = Math.floor(Math.min(Math.max(0, rightIndex), FPS * this.video.duration), 0);
+        if (rightIndex >= 0) {
+            const index = Math.floor(Math.min(Math.max(0, rightIndex), FPS * this.video.duration), 0);
+            const ts = index / FPS;
+            if ((index % FPS == 0) && (this.frameCache[ts] != null)) {
+                this.rightPanel.frame.src = this.frameCache[ts];
+            } else {
+                this.vidRequestQ.push({timestamp: ts, who: ANUVidLib.RIGHT});
+            }
 
-        if ((rightIndex % FPS == 0) && (this.frameCache[rightIndex / FPS] != null)) {
-            this.rightPanel.frame.src = this.frameCache[rightIndex / FPS];
+            this.rightPanel.status.innerHTML = ts.toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
+                this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
         }
 
-        if ((leftIndex % FPS == 0) && (this.frameCache[leftIndex / FPS] != null)) {
-            this.leftPanel.frame.src = this.frameCache[leftIndex / FPS];
-        } else {
-            this.video.currentTime = leftIndex / FPS;
+        // trigger first video request
+        if (this.vidRequestQ.length > 0) {
+            this.video.currentTime = this.vidRequestQ[0].timestamp;
         }
-        this.leftPanel.status.innerHTML = (leftIndex / FPS).toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
-            this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
-        this.rightPanel.status.innerHTML = (rightIndex / FPS).toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
-            this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
     }
 
     // Resize left and right canvas when window size changes of new video is loaded.
@@ -148,7 +167,6 @@ class ANUVidLib {
         if (isNaN(this.video.duration)) {
             this.leftPanel.canvas.height = 9 / 16 * this.leftPanel.canvas.width;
         } else {
-            console.log(Math.floor(this.leftPanel.canvas.width * this.video.videoHeight / this.video.videoWidth));
             this.leftPanel.canvas.height = Math.floor(this.leftPanel.canvas.width * this.video.videoHeight / this.video.videoWidth);
         }
         this.rightPanel.canvas.width = this.leftPanel.canvas.width;
@@ -166,7 +184,6 @@ class ANUVidLib {
         }
 
         console.assert((side == ANUVidLib.LEFT) || (side == ANUVidLib.RIGHT), "invalid side")
-        console.log("redrawing " + side)
 
         // draw left frame
         if (side == ANUVidLib.LEFT) {
