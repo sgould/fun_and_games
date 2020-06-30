@@ -16,9 +16,9 @@ TODO:
     8. load/save annotations
     9. export frames
     10. annotation visualisation (e.g., segments, tracks) and search
-    11. style sheet
+    11. style sheet; assets folder
     12. test in different browsers
-    13. fixed timestamp rounding bug (keep at index, i.e., FPS * timestamp)
+    X13. fixed timestamp rounding bug
     14. annotation copying
     15. keyboard shortcuts
 */
@@ -145,9 +145,14 @@ class ANUVidLib {
         window.addEventListener('resize', function() { self.resize(); }, false);
     }
 
+    // Load a new video file. Resets data once loaded.
     loadVideo(fileURL) {
         this.video.src = fileURL;
     }
+
+    // Convert between indices and timestamps.
+    indx2time(index) { return index / FPS; }
+    time2indx(timestamp) { return Math.round(FPS * timestamp); }
 
     // Seek to a specific index in the video. A negative number means don't update unless tied.
     seekTo(leftIndex, rightIndex) {
@@ -161,10 +166,22 @@ class ANUVidLib {
         // deal with tied sliders
         if (this._tiedframes) {
             if (leftIndex < 0) {
-                leftIndex = rightIndex - FPS * (this.rightPanel.timestamp - this.leftPanel.timestamp);
+                leftIndex = rightIndex - this.time2indx(this.rightPanel.timestamp) + this.time2indx(this.leftPanel.timestamp);
+                // check we haven't gone past video boundary
+                if ((leftIndex < 0) || (leftIndex > Math.floor(FPS * this.video.duration))) {
+                    leftIndex = Math.floor(Math.min(Math.max(0, leftIndex), FPS * this.video.duration), 0);
+                    rightIndex = leftIndex - this.time2indx(this.leftPanel.timestamp) + this.time2indx(this.rightPanel.timestamp);
+                    this.rightPanel.slider.value = rightIndex;
+                }
                 this.leftPanel.slider.value = leftIndex;
             } else if (rightIndex < 0) {
-                rightIndex = leftIndex - FPS * (this.leftPanel.timestamp - this.rightPanel.timestamp);
+                rightIndex = leftIndex - this.time2indx(this.leftPanel.timestamp) + this.time2indx(this.rightPanel.timestamp);
+                // check we haven't gone past video boundary
+                if ((rightIndex < 0) || (rightIndex > Math.floor(FPS * this.video.duration))) {
+                    rightIndex = Math.floor(Math.min(Math.max(0, rightIndex), FPS * this.video.duration), 0);
+                    leftIndex = rightIndex - this.time2indx(this.rightPanel.timestamp) + this.time2indx(this.leftPanel.timestamp);
+                    this.leftPanel.slider.value = leftIndex;
+                }
                 this.rightPanel.slider.value = rightIndex;
             }
         }
@@ -172,7 +189,7 @@ class ANUVidLib {
         this.vidRequestQ = []
         if (leftIndex >= 0) {
             const index = Math.floor(Math.min(Math.max(0, leftIndex), FPS * this.video.duration), 0);
-            const ts = index / FPS;
+            const ts = this.indx2time(index);
             if ((index % FPS == 0) && (this.frameCache[ts] != null)) {
                 this.leftPanel.frame.src = this.frameCache[ts];
             } else {
@@ -186,7 +203,7 @@ class ANUVidLib {
 
         if (rightIndex >= 0) {
             const index = Math.floor(Math.min(Math.max(0, rightIndex), FPS * this.video.duration), 0);
-            const ts = index / FPS;
+            const ts = this.indx2time(index);
             if ((index % FPS == 0) && (this.frameCache[ts] != null)) {
                 this.rightPanel.frame.src = this.frameCache[ts];
             } else {
