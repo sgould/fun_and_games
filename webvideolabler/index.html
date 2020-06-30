@@ -23,22 +23,13 @@
 </head>
 <body onload="init();">
 <h1>ANU CVML In-browser Video Annotation Tool</h1>
-Copyright &copy; 2020, Stephen Gould<p/>
+Copyright &copy; 2020, Stephen Gould. All rights reserved.<p/>
 
+<!-- video and annotation input -->
 <input type="file" accept="video/*" />
 <p/>
 
-<!--
-TODO:
-X1. resize and redraw left and right canvas with window
-X2. rounded rectangle boundary
-3. left/right tracking
-4. buffer video frames every second for faster scrolling
-5. save configuration locally + configuration page/button
-6. help page/video tutorial
-7. annotation functionality
--->
-
+<!-- side-by-side video frame container -->
 <div id="container" style="width: 100%;">
     <div id="leftpanel" style="width: 45%; float: left;">
         <div style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
@@ -60,12 +51,12 @@ X2. rounded rectangle boundary
         <button onclick="TODO" type="button" style="width: 50%;">&#8606;</button><p/>
         <br><p/>
         <b>Tracking</b><br><p/>
-        <input id="trackcb" type="checkbox">
-        <label for="trackcb">Tie Sliders</label><br>
+        <input id="tiedcb" type="checkbox" onclick="v.tiedframes = this.checked; return true;">
+        <label for="tiedcb">tie sliders</label><br>
         <br><p/>
         <b>Appearance</b><br><p/>
-        <input id="greycb" type="checkbox">
-        <label for="greycb">Greyscale</label><br>
+        <input id="greycb" type="checkbox" onclick="v.greyframes = this.checked; return true;">
+        <label for="greycb">greyscale</label><br>
     </div>
     <div id="rightpanel" style="width: 45%; float:left;">
         <div style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
@@ -78,6 +69,7 @@ X2. rounded rectangle boundary
             <span style="float: right;" id="rightstatus">none</span>
         </div>
     </div>
+    <!-- needed for proper alignment of previous divs -->
     <div style="clear: both;"></div>
 </div>
 

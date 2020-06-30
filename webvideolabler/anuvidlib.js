@@ -1,12 +1,27 @@
 /*******************************************************************************
-** ANUVIDLIB: A Javascript library for web-based video annotation.
+** ANUVIDLIB: A Javascript library for browser-based video annotation.
 ** Copyright (C) 2020, Stephen Gould <stephen.gould@anu.edu.au>
 **
-** TODO:
-**  1. add caching of extracted frames (reduced size)
-**  2. configuration of temporal and spatial resolutions
-**  3. button to export frames
 *******************************************************************************/
+
+/*
+TODO:
+    X1. resize and redraw left and right canvas with window
+    X2. rounded rectangle boundary
+    X3. left/right tracking
+    X4. buffer video frames every second for faster scrolling
+    5. save configuration locally + configuration page/button
+    6. help page/video tutorial
+    7. annotation functionality (types: temporal segments, bounding boxes, segments); define fields
+    8. load/save annotations
+    9. export frames
+    10. annotation visualisation (e.g., segments, tracks) and search
+    11. style sheet
+    12. test in different browsers
+    13. fixed timestamp rounding bug (keep at index, i.e., FPS * timestamp)
+    14. annotation copying
+    15. keyboard shortcuts
+*/
 
 const FPS = 10;     // temporal resolution (frames per second)
 
@@ -42,11 +57,19 @@ class ANUVidLib {
     static get BOTH() { return -1; }
     static get NONE() { return -2; }
 
+    // Properties.
+    get greyframes() { return this._greyframes; }
+    set greyframes(value) { this._greyframes = value; this.redraw(); }
+    get tiedframes() { return this._tiedframes; }
+    set tiedframes(value) { this._tiedframes = value; }
+
     // Construct an ANUVidLib object with two canvases for displaying frames and text spans for showing status
-    // information. Caches frames every second for faster scrolling (TODO).
+    // information. Caches frames every second for faster feedback during scrubbing.
     constructor(leftCanvasName, leftSliderName, leftStatusName, rightCanvasName, rightSliderName, rightStatusName) {
         var self = this;
 
+        this._greyframes = false;
+        this._tiedframes = false;
         this.video = document.createElement("video");
 
         this.leftPanel = {
@@ -69,6 +92,7 @@ class ANUVidLib {
         };
         this.rightPanel.frame.onload = function() { self.redraw(ANUVidLib.RIGHT); };
 
+        this.bFrameCacheComplete = false;
         this.frameCache = [];
 
         this.vidRequestQ = []; // video queries (timestamp, who)
@@ -81,8 +105,11 @@ class ANUVidLib {
             self.rightPanel.slider.max = Math.floor(FPS * self.video.duration);
             self.rightPanel.slider.value = 0;
             self.rightPanel.timestamp = null;
+
             self.frameCache.length = Math.floor(self.video.duration); // space for 1 frame per second
             self.frameCache.fill(null);
+            self.bFrameCacheComplete = false;
+
             self.seekTo(0, 0);
         }, false);
 
@@ -122,12 +149,24 @@ class ANUVidLib {
         this.video.src = fileURL;
     }
 
-    // Seek to a specific index in the video. A negative number means don't update.
+    // Seek to a specific index in the video. A negative number means don't update unless tied.
     seekTo(leftIndex, rightIndex) {
+        console.assert((leftIndex >= 0) || (rightIndex >= 0));
         if (isNaN(this.video.duration)) {
             this.leftPanel.status.innerHTML = "none";
             this.rightPanel.status.innerHTML = "none";
             return;
+        }
+
+        // deal with tied sliders
+        if (this._tiedframes) {
+            if (leftIndex < 0) {
+                leftIndex = rightIndex - FPS * (this.rightPanel.timestamp - this.leftPanel.timestamp);
+                this.leftPanel.slider.value = leftIndex;
+            } else if (rightIndex < 0) {
+                rightIndex = leftIndex - FPS * (this.leftPanel.timestamp - this.rightPanel.timestamp);
+                this.rightPanel.slider.value = rightIndex;
+            }
         }
 
         this.vidRequestQ = []
@@ -160,10 +199,16 @@ class ANUVidLib {
         }
 
         // add remaining frames at one-second boundaries for caching
-        for (var i = 0; i < this.video.duration; i++) {
-            if (this.frameCache[i] == null) {
-                this.vidRequestQ.push({timestamp: i, who: ANUVidLib.NONE});
+        if (!this.bFrameCacheComplete) {
+            this.bFrameCacheComplete = true;
+            for (var i = 0; i < this.video.duration; i++) {
+                if (this.frameCache[i] == null) {
+                    this.bFrameCacheComplete = false;
+                    this.vidRequestQ.push({timestamp: i, who: ANUVidLib.NONE});
+                }
             }
+
+            if (this.bFrameCacheComplete) console.log("...finished caching frames")
         }
 
         // trigger first video request
@@ -183,11 +228,11 @@ class ANUVidLib {
         this.rightPanel.canvas.width = this.leftPanel.canvas.width;
         this.rightPanel.canvas.height = this.leftPanel.canvas.height;
 
-        this.redraw(ANUVidLib.BOTH);
+        this.redraw();
     }
 
     // Redraw frames and annotations. Parameter 'side' can be LEFT, RIGHT or BOTH.
-    redraw(side) {
+    redraw(side = ANUVidLib.BOTH) {
         if (side == ANUVidLib.BOTH) {
             this.redraw(ANUVidLib.LEFT);
             this.redraw(ANUVidLib.RIGHT);
@@ -209,8 +254,18 @@ class ANUVidLib {
 
     // Draw a frame and it's annotations.
     paint(panel) {
+        // draw frame
         var context = panel.canvas.getContext('2d');
         context.drawImage(panel.frame, 0, 0, panel.canvas.width, panel.canvas.height);
+        if (this.greyframes) {
+            let imgData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+		    let pixels = imgData.data;
+		    for (var i = 0; i < pixels.length; i += 4) {
+                let intensity = parseInt(0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2]);
+		        pixels[i] = intensity; pixels[i + 1] = intensity; pixels[i + 2] = intensity;
+		    }
+		    context.putImageData(imgData, 0, 0);
+        }
 
         // draw border
         context.lineWidth = 7; context.strokeStyle = "#ffffff";
