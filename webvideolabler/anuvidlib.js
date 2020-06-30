@@ -16,7 +16,7 @@ TODO:
     8. load/save annotations
     9. export frames
     10. annotation visualisation (e.g., segments, tracks) and search
-    11. style sheet; assets folder
+    X11. style sheet
     12. test in different browsers
     X13. fixed timestamp rounding bug
     14. annotation copying

@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ANUCVML Video Annotation Tool</title>
+    <title>ANU CVML Video Annotation Tool</title>
+    <link rel="stylesheet" href="anucvml.css" type="text/css"/>
     <script type="text/javascript" src="anuvidlib.js"></script>
     <script type="text/javascript">
         var v = null;
@@ -19,11 +20,23 @@
             var input = document.querySelector('input');
             input.addEventListener('change', loadVideoFile, false);
         }
+
+        function play() {
+            if (isNaN(v.video.duration)) {
+                return;
+            }
+            document.getElementById('overlay').style.display = 'block';
+            var startTime = Math.min(v.leftPanel.timestamp, v.rightPanel.timestamp);
+            var endTime = Math.max(v.leftPanel.timestamp, v.rightPanel.timestamp);
+            document.getElementById('vidplayer').src = v.video.src + "#t=" + startTime + "," + endTime;
+        }
     </script>
 </head>
 <body onload="init();">
+<center>
 <h1>ANU CVML In-browser Video Annotation Tool</h1>
 Copyright &copy; 2020, Stephen Gould. All rights reserved.<p/>
+</center>
 
 <!-- video and annotation input -->
 <input type="file" accept="video/*" />
@@ -32,9 +45,9 @@ Copyright &copy; 2020, Stephen Gould. All rights reserved.<p/>
 <!-- side-by-side video frame container -->
 <div id="container" style="width: 100%;">
     <div id="leftpanel" style="width: 45%; float: left;">
-        <div style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
+        <div class="filmstrip"></div>
         <canvas id="leftframe" width="640px" height="480px" style="display: block;"></canvas>
-        <div style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
+        <div class="filmstrip"></div>
         <br>
         <div style="width: 100%;">
             <input type="range" min="0" max="100" value="0" style="width: 100%;" id="leftslider" oninput="v.seekTo(this.value, -1)";>
@@ -43,7 +56,7 @@ Copyright &copy; 2020, Stephen Gould. All rights reserved.<p/>
         </div>
     </div>
     <div id="centerpanel" style="width: 10%; float: left; text-align: center; position: relative;">
-        <b>Copy Annotations</b><br><p/>
+        <b>Annotations</b><br><p/>
         <button onclick="TODO" type="button" style="width: 50%;">&rarr;</button><p/>
         <button onclick="TODO" type="button" style="width: 50%;">&#8608;</button><p/>
         <br><p/>
@@ -57,11 +70,13 @@ Copyright &copy; 2020, Stephen Gould. All rights reserved.<p/>
         <b>Appearance</b><br><p/>
         <input id="greycb" type="checkbox" onclick="v.greyframes = this.checked; return true;">
         <label for="greycb">greyscale</label><br>
+        <br><p/>
+        <button onclick="play();" type="button" style="width: 50%;">&#x25B6; play</button><p/>
     </div>
     <div id="rightpanel" style="width: 45%; float:left;">
-        <div style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
+        <div class="filmstrip"></div>
         <canvas id="rightframe" width="640px" height="480px" style="display: block;"></canvas>
-        <div style="width: 100%; height: 20px; background-image: url(filmstrip.png); background-repeat: repeat-x;"></div>
+        <div class="filmstrip"></div>
         <br>
         <div style="width: 100%;">
             <input type="range" min="0" max="100" value="0" style="width: 100%;" id="rightslider" oninput="v.seekTo(-1, this.value)";>
@@ -71,6 +86,19 @@ Copyright &copy; 2020, Stephen Gould. All rights reserved.<p/>
     </div>
     <!-- needed for proper alignment of previous divs -->
     <div style="clear: both;"></div>
+</div>
+
+<!-- overlay window -->
+<div id="overlay">
+    <span id="overlayclosebtn" onclick="document.getElementById('overlay').style.display = 'none';">x</span>
+    <div class="centered">
+        <div class="filmstrip"></div>
+        <video style="width: 100%; display: block;" autoplay id="vidplayer"></video>
+        <div class="filmstrip"></div>
+        <button onclick="document.getElementById('vidplayer').load();" type="button" style="width: 10%; float: left;">&#x25B6; replay</button>
+        <button onclick="document.getElementById('vidplayer').pause(); document.getElementById('overlay').style.display = 'none';" type="button" style="width: 10%; float: right;">&#x25FC; stop</button>
+        <div style="clear: both;"></div>
+    </div>
 </div>
 
 </body>
