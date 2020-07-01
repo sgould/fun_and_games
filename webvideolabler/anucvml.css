@@ -17,6 +17,11 @@ address {
   font-size:small;
 }
 
+input[type=text] {
+    border: none;
+    width: 100%;
+}
+
 fieldset {
     margin: 8px;
     border: 1px solid silver;
