@@ -23,7 +23,32 @@ TODO:
     15. keyboard shortcuts
 */
 
-const FPS = 10;     // temporal resolution (frames per second)
+/*
+** Configuration.
+*/
+
+const VERSION = "0.1"   // library version (useful for loading old file formats)
+const FPS = 10;         // temporal resolution (frames per second)
+
+// webpage control ids
+const LEFTCANVASNAME  = "leftframe";
+const LEFTSLIDERNAME  = "leftslider";
+const LEFTSTATUSNAME  = "leftstatus";
+const RIGHTCANVASNAME = "rightframe";
+const RIGHTSLIDERNAME = "rightslider";
+const RIGHTSTATUSNAME = "rightstatus";
+const VIDSEGTABLENAME = "vidsegtable";
+
+/*
+** Control callback utilities.
+*/
+
+// defocus the current control element when enter is pressed
+function defocusOnEnter(event) {
+    if (event.keyCode == 13 || event.which == 13) {
+        event.currentTarget.blur();
+    }
+}
 
 /*
 ** Drawing utilities.
@@ -65,7 +90,7 @@ class ANUVidLib {
 
     // Construct an ANUVidLib object with two canvases for displaying frames and text spans for showing status
     // information. Caches frames every second for faster feedback during scrubbing.
-    constructor(leftCanvasName, leftSliderName, leftStatusName, rightCanvasName, rightSliderName, rightStatusName) {
+    constructor() {
         var self = this;
 
         this._greyframes = false;
@@ -74,9 +99,9 @@ class ANUVidLib {
 
         this.leftPanel = {
             side: ANUVidLib.LEFT,
-            canvas: document.getElementById(leftCanvasName),
-            slider: document.getElementById(leftSliderName),
-            status: document.getElementById(leftStatusName),
+            canvas: document.getElementById(LEFTCANVASNAME),
+            slider: document.getElementById(LEFTSLIDERNAME),
+            status: document.getElementById(LEFTSTATUSNAME),
             frame: new Image(),
             timestamp: null
         };
@@ -84,9 +109,9 @@ class ANUVidLib {
 
         this.rightPanel = {
             side: ANUVidLib.RIGHT,
-            canvas: document.getElementById(rightCanvasName),
-            slider: document.getElementById(rightSliderName),
-            status: document.getElementById(rightStatusName),
+            canvas: document.getElementById(RIGHTCANVASNAME),
+            slider: document.getElementById(RIGHTSLIDERNAME),
+            status: document.getElementById(RIGHTSTATUSNAME),
             frame: new Image(),
             timestamp: null
         };
@@ -302,4 +327,33 @@ class ANUVidLib {
         roundedRect(context, 0, 0, panel.canvas.width, panel.canvas.height, 9);
         context.stroke();
     }
+}
+
+/*
+** Annotation Utility Functions
+*/
+
+function newclip() {
+    var table = document.getElementById(VIDSEGTABLENAME);
+    var row = table.insertRow(-1);
+    row.insertCell(0).innerHTML = v.leftPanel.timestamp;
+    row.insertCell(1).innerHTML = v.rightPanel.timestamp;
+    var input = document.createElement("input");
+    input.type = "text"; input.classList.add("segdesc");
+    parent = row.insertCell(2);
+    parent.appendChild(input);
+    var cell = row.insertCell(3);
+    cell.innerHTML = "<button title='delete' onclick='delclip(this.parentElement.parentElement);'>&#x2718;</button>";
+    cell.innerHTML += " <button title='move up' onclick='todo();'>&#x1F819;</button>";
+    cell.innerHTML += " <button title='move down' onclick='todo();'>&#x1F81B;</button>";
+    cell.innerHTML += " <button title='goto' onclick='v.seekToTime(" +
+        v.leftPanel.timestamp + ", " + v.rightPanel.timestamp + ", true);'>&#x270E;</button>";
+    cell.style.textAlign = "right";
+    input.onkeypress = function(event) { defocusOnEnter(event); }
+    input.focus();
+}
+
+function delclip(row) {
+    var table = document.getElementById(VIDSEGTABLENAME);
+    table.deleteRow(row.rowIndex);
 }

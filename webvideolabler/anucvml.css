@@ -59,6 +59,17 @@ legend {
     opacity: 0.4;
 }
 
+#banner {
+    position: relative;
+}
+
+#logo {
+    position: absolute;
+    top: 0px;
+    right: 12px;
+    height: 64px;
+}
+
 /*
  * Overlay window (div) turn on and off with:
  *   document.getElementById('overlay').style.display = 'block';
