@@ -110,7 +110,7 @@ class ANUVidLib {
             self.frameCache.fill(null);
             self.bFrameCacheComplete = false;
 
-            self.seekTo(0, 0);
+            self.seekToIndex(0, 0);
         }, false);
 
         this.video.addEventListener('seeked', function() {
@@ -155,7 +155,7 @@ class ANUVidLib {
     time2indx(timestamp) { return Math.round(FPS * timestamp); }
 
     // Seek to a specific index in the video. A negative number means don't update unless tied.
-    seekTo(leftIndex, rightIndex) {
+    seekToIndex(leftIndex, rightIndex) {
         console.assert((leftIndex >= 0) || (rightIndex >= 0));
         if (isNaN(this.video.duration)) {
             this.leftPanel.status.innerHTML = "none";
@@ -232,6 +232,15 @@ class ANUVidLib {
         if (this.vidRequestQ.length > 0) {
             this.video.currentTime = this.vidRequestQ[0].timestamp;
         }
+    }
+
+    // Seek to a specific timestamp in the video. A negative number means don't update unless tied.
+    seekToTime(leftTime, rightTime, bUpdateSliders) {
+        var leftIndex = this.time2indx(leftTime);
+        var rightIndex = this.time2indx(rightTime);
+        this.leftPanel.slider.value = leftIndex;
+        this.rightPanel.slider.value = rightIndex;
+        return this.seekToIndex(leftIndex, rightIndex);
     }
 
     // Resize left and right canvas when window size changes of new video is loaded.

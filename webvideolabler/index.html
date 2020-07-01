@@ -6,6 +6,9 @@
     <link rel="stylesheet" href="anucvml.css" type="text/css"/>
     <script type="text/javascript" src="anuvidlib.js"></script>
     <script type="text/javascript">
+        function todo() { window.alert("Not implemented yet!"); }
+    </script>
+    <script type="text/javascript">
         var v = null;
 
         function init() {
@@ -30,12 +33,36 @@
             var endTime = Math.max(v.leftPanel.timestamp, v.rightPanel.timestamp);
             document.getElementById('vidplayer').src = v.video.src + "#t=" + startTime + "," + endTime;
         }
+
+        function newclip() {
+            var table = document.getElementById("cliptable");
+            var row = table.insertRow(-1);
+            row.insertCell(0).innerHTML = v.leftPanel.timestamp;
+            row.insertCell(1).innerHTML = v.rightPanel.timestamp;
+            //row.insertCell(2).innerHTML = "<input type='text' size='100' value='new segment'>";
+            var input = document.createElement("input");
+            input.type = "text"; input.classList.add("segdesc"); input.size = 100;
+            parent = row.insertCell(2);
+            parent.appendChild(input);
+            var cell = row.insertCell(3);
+            cell.innerHTML = "<button title='delete' onclick='delclip(this.parentElement.parentElement);'>&#x2718;</button>";
+            cell.innerHTML += " <button title='move up' onclick='todo();'>&uarr;</button>";
+            cell.innerHTML += " <button title='move down' onclick='todo();'>&darr;</button>";
+            cell.innerHTML += " <button title='goto' onclick='v.seekToTime(" +
+                v.leftPanel.timestamp + ", " + v.rightPanel.timestamp + ", true);'>&#x270E;</button>";
+            cell.style.textAlign = "right";
+            input.focus();
+        }
+
+        function delclip(row) {
+            var table = document.getElementById("cliptable");
+            table.deleteRow(row.rowIndex);
+        }
     </script>
 </head>
 <body onload="init();">
 <center>
 <h1>ANU CVML In-browser Video Annotation Tool</h1>
-Copyright &copy; 2020, Stephen Gould. All rights reserved.<p/>
 </center>
 
 <!-- video and annotation input -->
@@ -50,18 +77,18 @@ Copyright &copy; 2020, Stephen Gould. All rights reserved.<p/>
         <div class="filmstrip"></div>
         <br>
         <div style="width: 100%;">
-            <input type="range" min="0" max="100" value="0" style="width: 100%;" id="leftslider" oninput="v.seekTo(this.value, -1)";>
+            <input type="range" min="0" max="100" value="0" style="width: 100%;" id="leftslider" oninput="v.seekToIndex(this.value, -1)";>
             <br>
             <span style="float: right;" id="leftstatus">none</span>
         </div>
     </div>
     <div id="centerpanel" style="width: 10%; float: left; text-align: center; position: relative;">
         <b>Annotations</b><br><p/>
-        <button onclick="TODO" type="button" style="width: 50%;">&rarr;</button><p/>
-        <button onclick="TODO" type="button" style="width: 50%;">&#8608;</button><p/>
+        <button onclick="todo();" type="button" style="width: 50%;">&rarr;</button><p/>
+        <button onclick="todo();" type="button" style="width: 50%;">&#8608;</button><p/>
         <br><p/>
-        <button onclick="TODO" type="button" style="width: 50%;">&larr;</button><p/>
-        <button onclick="TODO" type="button" style="width: 50%;">&#8606;</button><p/>
+        <button onclick="todo();" type="button" style="width: 50%;">&larr;</button><p/>
+        <button onclick="todo();" type="button" style="width: 50%;">&#8606;</button><p/>
         <br><p/>
         <b>Tracking</b><br><p/>
         <input id="tiedcb" type="checkbox" onclick="v.tiedframes = this.checked; return true;">
@@ -71,7 +98,9 @@ Copyright &copy; 2020, Stephen Gould. All rights reserved.<p/>
         <input id="greycb" type="checkbox" onclick="v.greyframes = this.checked; return true;">
         <label for="greycb">greyscale</label><br>
         <br><p/>
-        <button onclick="play();" type="button" style="width: 50%;">&#x25B6; play</button><p/>
+        <b>Segment</b><br><p/>
+        <button onclick="v.seekToTime(v.rightPanel.timestamp, v.leftPanel.timestamp, true);" title="swap" type="button" style="width: 50%;">&#x21C4; swap</button><p/>
+        <button onclick="play();" title="play" type="button" style="width: 50%;">&#x25B6; play</button><p/>
     </div>
     <div id="rightpanel" style="width: 45%; float:left;">
         <div class="filmstrip"></div>
@@ -79,13 +108,28 @@ Copyright &copy; 2020, Stephen Gould. All rights reserved.<p/>
         <div class="filmstrip"></div>
         <br>
         <div style="width: 100%;">
-            <input type="range" min="0" max="100" value="0" style="width: 100%;" id="rightslider" oninput="v.seekTo(-1, this.value)";>
+            <input type="range" min="0" max="100" value="0" style="width: 100%;" id="rightslider" oninput="v.seekToIndex(-1, this.value)";>
             <br>
             <span style="float: right;" id="rightstatus">none</span>
         </div>
     </div>
     <!-- needed for proper alignment of previous divs -->
     <div style="clear: both;"></div>
+</div>
+
+<!-- annotations container -->
+<div id="annotations" style="width: 100%;">
+<fieldset style="background: #f7f7f7;">
+<legend>Video segments</legend>
+    <div style="float: right;">
+        <button title="sort" onclick="todo();">&#x21A7; sort</button>
+        <button title="add segment" onclick="newclip();">&#x271A;</button>
+    </div>
+    <div style="clear: both;"></div>
+    <table id="cliptable" width="100%">
+        <tr><th width="5%">start</th><th width="5%">end</th><th>description</th><th align="right"></th></tr>
+    </table>
+</fieldset>
 </div>
 
 <!-- overlay window -->
@@ -100,6 +144,12 @@ Copyright &copy; 2020, Stephen Gould. All rights reserved.<p/>
         <div style="clear: both;"></div>
     </div>
 </div>
+
+<p/>
+<address>
+    Copyright &copy; 2020, Stephen Gould. All rights reserved.<br>
+    about | help | contact
+</address>
 
 </body>
 </html>
