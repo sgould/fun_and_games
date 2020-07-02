@@ -145,8 +145,10 @@ class ANUVidLib {
         this.video.addEventListener('error', function() {
             window.alert("ERROR: could not load video \"" + self.video.src + "\"");
             self.frameCache = [];
-            self.leftPanel.frame = null;
-            self.rightPanel.frame = null;
+            self.leftPanel.frame = new Image();
+            self.leftPanel.frame.onload = function() { self.redraw(ANUVidLib.LEFT); };
+            self.rightPanel.frame = new Image();
+            self.rightPanel.frame.onload = function() { self.redraw(ANUVidLib.RIGHT); };
             self.redraw(ANUVidLib.BOTH);
             self.leftPanel.status.innerHTML = "none";
             self.rightPanel.status.innerHTML = "none";
@@ -286,9 +288,12 @@ class ANUVidLib {
     // Swap left and right panels. Same effect as seekToTime(this.rightPanel.timestamp, this.leftPanel.timestamp, true)
     // but faster since no video seek is required.
     swap() {
-        var tmp = this.leftPanel.frame;
-        this.leftPanel.frame = this.rightPanel.frame;
-        this.rightPanel.frame = tmp;
+        //this.seekToTime(this.rightPanel.timestamp, this.leftPanel.timestamp, true);
+        //return;
+
+        var tmp = this.leftPanel.frame.src;
+        this.leftPanel.frame.src = this.rightPanel.frame.src;
+        this.rightPanel.frame.src = tmp;
 
         tmp = this.leftPanel.timestamp;
         this.leftPanel.timestamp = this.rightPanel.timestamp;
@@ -297,7 +302,7 @@ class ANUVidLib {
         this.leftPanel.slider.value = this.time2indx(this.leftPanel.timestamp);
         this.rightPanel.slider.value = this.time2indx(this.rightPanel.timestamp);
 
-        this.redraw();
+        //this.redraw();
     }
 
     // Resize left and right canvas when window size changes of new video is loaded.
@@ -339,7 +344,7 @@ class ANUVidLib {
     paint(panel) {
         // draw frame
         var context = panel.canvas.getContext('2d');
-        if (panel.frame != null) {
+        if ((panel.frame != null) && (panel.frame.width > 0) && (panel.frame.height > 0)) {
             context.drawImage(panel.frame, 0, 0, panel.canvas.width, panel.canvas.height);
 
             if (this.greyframes) {
