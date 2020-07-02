@@ -283,6 +283,23 @@ class ANUVidLib {
         return this.seekToIndex(leftIndex, rightIndex);
     }
 
+    // Swap left and right panels. Same effect as seekToTime(this.rightPanel.timestamp, this.leftPanel.timestamp, true)
+    // but faster since no video seek is required.
+    swap() {
+        var tmp = this.leftPanel.frame;
+        this.leftPanel.frame = this.rightPanel.frame;
+        this.rightPanel.frame = tmp;
+
+        tmp = this.leftPanel.timestamp;
+        this.leftPanel.timestamp = this.rightPanel.timestamp;
+        this.rightPanel.timestamp = tmp;
+
+        this.leftPanel.slider.value = this.time2indx(this.leftPanel.timestamp);
+        this.rightPanel.slider.value = this.time2indx(this.rightPanel.timestamp);
+
+        this.redraw();
+    }
+
     // Resize left and right canvas when window size changes of new video is loaded.
     resize() {
         this.leftPanel.canvas.width = this.leftPanel.canvas.parentNode.clientWidth;
@@ -346,6 +363,14 @@ class ANUVidLib {
         context.strokeRect(0, 0, panel.canvas.width, panel.canvas.height);
         roundedRect(context, 0, 0, panel.canvas.width, panel.canvas.height, 9);
         context.stroke();
+
+        // update status
+        if (panel.timestamp == null) {
+            panel.status.innerHTML = "none";
+        } else {
+            panel.status.innerHTML = panel.timestamp.toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
+                this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
+        }
     }
 }
 
