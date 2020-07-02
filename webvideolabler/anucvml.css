@@ -76,7 +76,7 @@ legend {
  *   document.getElementById('overlay').style.display = 'none';
 */
 
-#overlay {
+.overlay {
     position: fixed;  /* Sit on top of the page content */
     display: none;    /* Hidden by default (set to block to show) */
     width: 100%;      /* Full width (cover the whole page) */
@@ -90,7 +90,7 @@ legend {
     cursor: pointer;  /* Add a pointer on hover */
 }
 
-#overlayclosebtn {
+.overlayclosebtn {
     float:right;
     display:inline-block;
     padding:2px 5px;
@@ -98,7 +98,7 @@ legend {
     background:#cccccc;
 }
 
-#overlayclosebtn:hover {
+.overlayclosebtn:hover {
     color:#ffffff;
 }
 
@@ -108,4 +108,8 @@ legend {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+}
+
+.textlink:hover {
+    cursor: pointer;
 }

@@ -20,7 +20,8 @@ TODO:
     12. test in different browsers
     X13. fixed timestamp rounding bug
     14. annotation copying
-    15. keyboard shortcuts
+    X15. keyboard shortcuts
+    16. tidy up and error checking
 */
 
 /*
@@ -43,10 +44,13 @@ const VIDSEGTABLENAME = "vidsegtable";
 ** Control callback utilities.
 */
 
-// defocus the current control element when enter is pressed
-function defocusOnEnter(event) {
+// defocus the current control element when enter is pressed and move focus to target element
+function defocusOnEnter(event, target = null) {
     if (event.keyCode == 13 || event.which == 13) {
         event.currentTarget.blur();
+        if (target != null) {
+            target.focus();
+        }
     }
 }
 
@@ -138,6 +142,16 @@ class ANUVidLib {
             self.seekToIndex(0, 0);
         }, false);
 
+        this.video.addEventListener('error', function() {
+            window.alert("ERROR: could not load video \"" + self.video.src + "\"");
+            self.frameCache = [];
+            self.leftPanel.frame = null;
+            self.rightPanel.frame = null;
+            self.redraw(ANUVidLib.BOTH);
+            self.leftPanel.status.innerHTML = "none";
+            self.rightPanel.status.innerHTML = "none";
+        }, false);
+
         this.video.addEventListener('seeked', function() {
             // extract the frame and redraw (triggered by onload)
             const canvas = document.createElement("canvas");
@@ -173,6 +187,7 @@ class ANUVidLib {
     // Load a new video file. Resets data once loaded.
     loadVideo(fileURL) {
         this.video.src = fileURL;
+        clearclips();
     }
 
     // Convert between indices and timestamps.
@@ -307,15 +322,20 @@ class ANUVidLib {
     paint(panel) {
         // draw frame
         var context = panel.canvas.getContext('2d');
-        context.drawImage(panel.frame, 0, 0, panel.canvas.width, panel.canvas.height);
-        if (this.greyframes) {
-            let imgData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
-		    let pixels = imgData.data;
-		    for (var i = 0; i < pixels.length; i += 4) {
-                let intensity = parseInt(0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2]);
-		        pixels[i] = intensity; pixels[i + 1] = intensity; pixels[i + 2] = intensity;
-		    }
-		    context.putImageData(imgData, 0, 0);
+        if (panel.frame != null) {
+            context.drawImage(panel.frame, 0, 0, panel.canvas.width, panel.canvas.height);
+
+            if (this.greyframes) {
+                let imgData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+                let pixels = imgData.data;
+                for (var i = 0; i < pixels.length; i += 4) {
+                    let intensity = parseInt(0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2]);
+                    pixels[i] = intensity; pixels[i + 1] = intensity; pixels[i + 2] = intensity;
+                }
+                context.putImageData(imgData, 0, 0);
+            }
+        } else {
+            context.clearRect(0, 0, panel.canvas.width, panel.canvas.height);
         }
 
         // draw border
@@ -349,11 +369,18 @@ function newclip() {
     cell.innerHTML += " <button title='goto' onclick='v.seekToTime(" +
         v.leftPanel.timestamp + ", " + v.rightPanel.timestamp + ", true);'>&#x270E;</button>";
     cell.style.textAlign = "right";
-    input.onkeypress = function(event) { defocusOnEnter(event); }
+    input.onkeypress = function(event) { defocusOnEnter(event, document.getElementById(LEFTSLIDERNAME)); }
     input.focus();
 }
 
 function delclip(row) {
     var table = document.getElementById(VIDSEGTABLENAME);
     table.deleteRow(row.rowIndex);
+}
+
+function clearclips() {
+    var table = document.getElementById(VIDSEGTABLENAME);
+    for (var i = table.rows.length - 1; i > 0; i--) {
+        table.deleteRow(i);
+    }
 }
