@@ -31,6 +31,7 @@ fieldset {
 
 legend {
     padding: 2px;
+    font-weight: bold;
 }
 
 .filmstrip {

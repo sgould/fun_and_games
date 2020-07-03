@@ -10,7 +10,7 @@ TODO:
     X2. rounded rectangle boundary
     X3. left/right tracking
     X4. buffer video frames every second for faster scrolling
-    5. save configuration locally + configuration page/button
+    X5. save configuration locally
     6. help page/video tutorial
     7. annotation functionality (types: temporal segments, bounding boxes, segments); define fields
     8. load/save annotations
@@ -22,22 +22,29 @@ TODO:
     14. annotation copying
     X15. keyboard shortcuts
     16. tidy up and error checking
+    17. warn on delete
+    18. keyframes (load/save, add, navigate)
+    19. proper modules and imports
 */
 
 /*
 ** Configuration.
 */
 
-const VERSION = "0.1"   // library version (useful for loading old file formats)
-const FPS = 10;         // temporal resolution (frames per second)
+const VERSION = "0.1(alpha)"    // library version (useful for loading old file formats)
+const FPS = 10;                 // temporal resolution (frames per second)
 
 // webpage control ids
 const LEFTCANVASNAME  = "leftframe";
 const LEFTSLIDERNAME  = "leftslider";
 const LEFTSTATUSNAME  = "leftstatus";
+const LEFTOBJLISTNAME  = null; // TODO
+
 const RIGHTCANVASNAME = "rightframe";
 const RIGHTSLIDERNAME = "rightslider";
 const RIGHTSTATUSNAME = "rightstatus";
+const RIGHTOBJLISTNAME = null; // TODO
+
 const VIDSEGTABLENAME = "vidsegtable";
 
 /*
@@ -110,6 +117,8 @@ class ANUVidLib {
             timestamp: null
         };
         this.leftPanel.frame.onload = function() { self.redraw(ANUVidLib.LEFT); };
+        this.leftPanel.canvas.onmousemove = function(e) { self.mousemove(e, ANUVidLib.LEFT); }
+        // TODO: also mouseover, mouseout
 
         this.rightPanel = {
             side: ANUVidLib.RIGHT,
@@ -120,6 +129,9 @@ class ANUVidLib {
             timestamp: null
         };
         this.rightPanel.frame.onload = function() { self.redraw(ANUVidLib.RIGHT); };
+        this.rightPanel.canvas.onmousemove = function(e) { self.mousemove(e, ANUVidLib.RIGHT); }
+
+        this.objectList = [];
 
         this.bFrameCacheComplete = false;
         this.frameCache = [];
@@ -135,6 +147,11 @@ class ANUVidLib {
             self.rightPanel.slider.value = 0;
             self.rightPanel.timestamp = null;
 
+            self.objectList.length = Math.floor(FPS * self.video.duration);
+            for (var i = 0; i < self.objectList.length; i++) {
+                self.objectList[i] = [];
+            }
+
             self.frameCache.length = Math.floor(self.video.duration); // space for 1 frame per second
             self.frameCache.fill(null);
             self.bFrameCacheComplete = false;
@@ -145,6 +162,7 @@ class ANUVidLib {
         this.video.addEventListener('error', function() {
             window.alert("ERROR: could not load video \"" + self.video.src + "\"");
             self.frameCache = [];
+            self.objectList = [];
             self.leftPanel.frame = new Image();
             self.leftPanel.frame.onload = function() { self.redraw(ANUVidLib.LEFT); };
             self.rightPanel.frame = new Image();
@@ -360,13 +378,21 @@ class ANUVidLib {
             context.clearRect(0, 0, panel.canvas.width, panel.canvas.height);
         }
 
+        // draw objects
+        if (this.objectList.length > 0) {
+            let frameIndex = this.time2indx(panel.timestamp);
+            for (var i = 0; i < this.objectList[frameIndex].length; i++) {
+                this.objectList[frameIndex][i].draw(context);
+            }
+        }
+
         // draw border
         context.lineWidth = 7; context.strokeStyle = "#ffffff";
-        roundedRect(context, 0, 0, panel.canvas.width, panel.canvas.height, 9);
+        roundedRect(context, 0, -2, panel.canvas.width, panel.canvas.height + 5, 9);
         context.stroke();
         context.lineWidth = 5; context.strokeStyle = "#000000";
-        context.strokeRect(0, 0, panel.canvas.width, panel.canvas.height);
-        roundedRect(context, 0, 0, panel.canvas.width, panel.canvas.height, 9);
+        context.strokeRect(0, -2, panel.canvas.width, panel.canvas.height + 5);
+        roundedRect(context, 0, -2, panel.canvas.width, panel.canvas.height + 5, 9);
         context.stroke();
 
         // update status
@@ -376,6 +402,11 @@ class ANUVidLib {
             panel.status.innerHTML = panel.timestamp.toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
                 this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
         }
+    }
+
+    // Process mouse movement over a panel.
+    mousemove(event, side) {
+        console.log("mouse moving in " + ((side == ANUVidLib.LEFT) ? "left" : "right"));
     }
 }
 
