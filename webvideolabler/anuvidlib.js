@@ -320,7 +320,7 @@ class ANUVidLib {
     }
 
     // Seek to a specific timestamp in the video. A negative number means don't update unless tied.
-    seekToTime(leftTime, rightTime, bUpdateSliders) {
+    seekToTime(leftTime, rightTime, bUpdateSliders = true) {
         var leftIndex = this.time2indx(leftTime);
         var rightIndex = this.time2indx(rightTime);
         this.leftPanel.slider.value = leftIndex;
@@ -427,6 +427,26 @@ class ANUVidLib {
             panel.status.innerHTML = panel.timestamp.toFixed(2) + " / " + this.video.duration.toFixed(2) + "s [" +
                 this.video.videoWidth + "-by-" + this.video.videoHeight + "]";
         }
+    }
+
+    // Copy objects from source frame to target frame.
+    copy(srcSide, tgtSide, overwrite) {
+        const srcPanel = (srcSide == ANUVidLib.LEFT) ? this.leftPanel : this.rightPanel;
+        const tgtPanel = (tgtSide == ANUVidLib.LEFT) ? this.leftPanel : this.rightPanel;
+        const srcIndex = this.time2indx(srcPanel.timestamp);
+        const tgtIndex = this.time2indx(tgtPanel.timestamp);
+        if (srcIndex == tgtIndex)
+            return;
+
+        if (overwrite) {
+            this.objectList[tgtIndex] = [];
+        }
+
+        for (var i = 0; i < this.objectList[srcIndex].length; i++) {
+            this.objectList[tgtIndex].push(this.objectList[srcIndex][i].clone());
+        }
+
+        this.paint(tgtPanel);
     }
 
     // Get active object at position (x, y) on given panel.

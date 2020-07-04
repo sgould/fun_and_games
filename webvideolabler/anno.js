@@ -21,6 +21,13 @@ class ObjectBox {
         this.score = score;
     }
 
+    // Create a clone of this object.
+    clone() {
+        var obj = new ObjectBox(this.x, this.y, this.width, this.height,
+            this.labelId, this.instanceId, this.colour, this.score);
+        return obj;
+    }
+
     // Update box size.
     resize(x, y, w, h) {
         if (w < 0) {

@@ -133,11 +133,11 @@
     </div>
     <div id="centerpanel" style="width: 10%; float: left; text-align: center; position: relative;">
         <b>Annotations</b><br><p/>
-        <button onclick="todo();" type="button" style="width: 50%;">&rarr;</button><p/>
-        <button onclick="todo();" type="button" style="width: 50%;">&#8608;</button><p/>
+        <button onclick="v.copy(ANUVidLib.LEFT, ANUVidLib.RIGHT, false);" title="copy right" type="button" style="width: 50%;">&rarr;</button><p/>
+        <button onclick="v.copy(ANUVidLib.LEFT, ANUVidLib.RIGHT, true);" title="replace right" type="button" style="width: 50%;">&#8608;</button><p/>
         <br><p/>
-        <button onclick="todo();" type="button" style="width: 50%;">&larr;</button><p/>
-        <button onclick="todo();" type="button" style="width: 50%;">&#8606;</button><p/>
+        <button onclick="v.copy(ANUVidLib.RIGHT, ANUVidLib.LEFT, false);" title="copy left" type="button" style="width: 50%;">&larr;</button><p/>
+        <button onclick="v.copy(ANUVidLib.RIGHT, ANUVidLib.LEFT, true);" title="replace left" type="button" style="width: 50%;">&#8606;</button><p/>
         <br><p/>
         <b>Options</b><br><p/>
         <input id="tiedcb" type="checkbox" onclick="v.tiedframes = this.checked; return true;">
@@ -185,6 +185,11 @@
     <fieldset style="background: #f7f7f7;">
         <legend>Keyframes</legend>
         TODO: load/generate, export, navigate
+        <div style="float: right;">
+            <button title="previous" onclick="v.seekToTime(Math.max(v.leftPanel.timestamp - 1.0, 0.0), v.leftPanel.timestamp);">&lt;</button>
+            <button title="next" onclick="v.seekToTime(v.rightPanel.timestamp, Math.min(v.rightPanel.timestamp + 1.0, v.video.duration));">&gt;</button>
+        </div>
+        <div style="clear: both;"></div>
     </fieldset>
 
     <fieldset style="background: #f7f7f7;">
