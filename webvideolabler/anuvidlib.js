@@ -84,6 +84,24 @@ function roundedRect(ctx, x, y, width, height, rounded) {
 }
 
 /*
+** Mouse drag context helper.
+*/
+
+class DragContext {
+    // Drag mode.
+    static get NONE() { return 0;}
+    static get MOVING() { return 1; }
+    static get SIZING() { return 2; }
+
+    constructor() {
+        this.mode = DragContext.NONE;
+        this.startX = null;
+        this.startY = null;
+        this.anchor = null;
+    }
+}
+
+/*
 ** In-browser Video Labeler. Responsible for video rendering and user I/O.
 */
 class ANUVidLib {
@@ -118,7 +136,9 @@ class ANUVidLib {
         };
         this.leftPanel.frame.onload = function() { self.redraw(ANUVidLib.LEFT); };
         this.leftPanel.canvas.onmousemove = function(e) { self.mousemove(e, ANUVidLib.LEFT); }
-        // TODO: also mouseover, mouseout
+        this.leftPanel.canvas.onmouseout = function(e) { self.mouseout(e, ANUVidLib.LEFT); }
+        this.leftPanel.canvas.onmousedown = function(e) { self.mousedown(e, ANUVidLib.LEFT); }
+        this.leftPanel.canvas.onmouseup = function(e) { self.mouseup(e, ANUVidLib.LEFT); }
 
         this.rightPanel = {
             side: ANUVidLib.RIGHT,
@@ -130,8 +150,13 @@ class ANUVidLib {
         };
         this.rightPanel.frame.onload = function() { self.redraw(ANUVidLib.RIGHT); };
         this.rightPanel.canvas.onmousemove = function(e) { self.mousemove(e, ANUVidLib.RIGHT); }
+        this.rightPanel.canvas.onmouseout = function(e) { self.mouseout(e, ANUVidLib.RIGHT); }
+        this.rightPanel.canvas.onmousedown = function(e) { self.mousedown(e, ANUVidLib.RIGHT); }
+        this.rightPanel.canvas.onmouseup = function(e) { self.mouseup(e, ANUVidLib.RIGHT); }
 
-        this.objectList = [];
+        this.objectList = [[]];
+        this.activeObject = null;
+        this.dragContext = new DragContext();
 
         this.bFrameCacheComplete = false;
         this.frameCache = [];
@@ -382,7 +407,7 @@ class ANUVidLib {
         if (this.objectList.length > 0) {
             let frameIndex = this.time2indx(panel.timestamp);
             for (var i = 0; i < this.objectList[frameIndex].length; i++) {
-                this.objectList[frameIndex][i].draw(context);
+                this.objectList[frameIndex][i].draw(context, this.objectList[frameIndex][i] == this.activeObject);
             }
         }
 
@@ -404,9 +429,98 @@ class ANUVidLib {
         }
     }
 
+    // Get active object at position (x, y) on given panel.
+    findActiveObject(x, y, panel) {
+        const frameIndex = this.time2indx(panel.timestamp);
+        for (var i = this.objectList[frameIndex].length - 1; i >= 0; i--) {
+            if (this.objectList[frameIndex][i].nearBoundary(x, y, panel.canvas.width, panel.canvas.height)) {
+                return this.objectList[frameIndex][i];
+            }
+        }
+
+        return null;
+    }
+
     // Process mouse movement over a panel.
     mousemove(event, side) {
+        console.assert((side == ANUVidLib.LEFT) || (side == ANUVidLib.RIGHT), "invalid side");
         console.log("mouse moving in " + ((side == ANUVidLib.LEFT) ? "left" : "right"));
+
+        // get current panel
+        const panel = (side == ANUVidLib.LEFT) ? this.leftPanel : this.rightPanel;
+
+        // handle dragging
+        if (this.dragContext.mode == DragContext.MOVING) {
+            this.activeObject.x += event.movementX / panel.canvas.width;
+            this.activeObject.y += event.movementY / panel.canvas.height;
+            this.paint(panel);
+            if (this.leftPanel.timestamp == this.rightPanel.timestamp) {
+                this.paint((side == ANUVidLib.RIGHT) ? this.leftPanel : this.rightPanel);
+            }
+            return;
+        }
+
+        if (this.dragContext.mode == DragContext.SIZING) {
+            const x = this.dragContext.anchor.u / panel.canvas.width;
+            const y = this.dragContext.anchor.v / panel.canvas.height;
+            const w = event.movementX / panel.canvas.width + ((x > this.activeObject.x) ? -this.activeObject.width : this.activeObject.width);
+            const h = event.movementY / panel.canvas.height + ((y > this.activeObject.y) ? -this.activeObject.height : this.activeObject.height);
+            this.activeObject.resize(x, y, w, h);
+            this.paint(panel);
+            if (this.leftPanel.timestamp == this.rightPanel.timestamp) {
+                this.paint((side == ANUVidLib.RIGHT) ? this.leftPanel : this.rightPanel);
+            }
+            return;
+        }
+
+        // search for an active object
+        const lastActiveObject = this.activeObject;
+        this.activeObject = this.findActiveObject(event.offsetX, event.offsetY, panel);
+
+        // repaint if the active object changed
+        if (this.activeObject != lastActiveObject) {
+            this.paint(panel);
+        }
+    }
+
+    // Process mouse leaving a panel.
+    mouseout(event, side) {
+        this.dragContext.mode = DragContext.NONE;
+        if (this.activeObject != null) {
+            this.activeObject = null;
+            this.paint((side == ANUVidLib.LEFT) ? this.leftPanel : this.rightPanel);
+            if (this.leftPanel.timestamp == this.rightPanel.timestamp) {
+                this.paint((side == ANUVidLib.RIGHT) ? this.leftPanel : this.rightPanel);
+            }
+        }
+    }
+
+    // Process mouse button press inside panel.
+    mousedown(event, side) {
+        const panel = (side == ANUVidLib.LEFT) ? this.leftPanel : this.rightPanel;
+        if (this.activeObject != null) {
+            this.dragContext.anchor = this.activeObject.oppositeAnchor(event.offsetX, event.offsetY, panel.canvas.width, panel.canvas.height);
+            if (this.dragContext.anchor == null) {
+                this.dragContext.mode = DragContext.MOVING;
+            } else {
+                this.dragContext.mode = DragContext.SIZING;
+            }
+            this.dragContext.startX = event.offsetX;
+            this.dragContext.startY = event.offsetY;
+        }
+    }
+
+    // Process mouse button press inside panel.
+    mouseup(event, side) {
+        this.dragContext.mode = DragContext.NONE;
+
+        if (this.activeObject != null) {
+            this.activeObject = null;
+            this.paint((side == ANUVidLib.LEFT) ? this.leftPanel : this.rightPanel);
+            if (this.leftPanel.timestamp == this.rightPanel.timestamp) {
+                this.paint((side == ANUVidLib.RIGHT) ? this.leftPanel : this.rightPanel);
+            }
+        }
     }
 }
 
