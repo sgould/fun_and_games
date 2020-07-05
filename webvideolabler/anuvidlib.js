@@ -25,6 +25,7 @@ TODO:
     17. warn on delete
     18. keyframes (load/save, add, navigate)
     19. proper modules and imports
+    20. flash errors/warnings (see things logged to console or functions returning false)
 */
 
 /*
@@ -154,14 +155,16 @@ class ANUVidLib {
         this.rightPanel.canvas.onmousedown = function(e) { self.mousedown(e, ANUVidLib.RIGHT); }
         this.rightPanel.canvas.onmouseup = function(e) { self.mouseup(e, ANUVidLib.RIGHT); }
 
-        this.objectList = [[]];
+        this.keyframes = [];    // index of keyframe timestamps
+
+        this.objectList = [[]]; // array of array of objects
         this.activeObject = null;
         this.dragContext = new DragContext();
 
         this.bFrameCacheComplete = false;
-        this.frameCache = [];
+        this.frameCache = [];   // array of images
 
-        this.vidRequestQ = []; // video queries (timestamp, who)
+        this.vidRequestQ = [];  // video queries (timestamp, who)
 
         this.video.addEventListener('loadeddata', function() {
             self.resize();
@@ -172,6 +175,7 @@ class ANUVidLib {
             self.rightPanel.slider.value = 0;
             self.rightPanel.timestamp = null;
 
+            self.keyframes = [];
             self.objectList.length = Math.floor(FPS * self.video.duration);
             for (var i = 0; i < self.objectList.length; i++) {
                 self.objectList[i] = [];
@@ -187,7 +191,8 @@ class ANUVidLib {
         this.video.addEventListener('error', function() {
             window.alert("ERROR: could not load video \"" + self.video.src + "\"");
             self.frameCache = [];
-            self.objectList = [];
+            self.keyframes = [];
+            self.objectList = [[]];
             self.leftPanel.frame = new Image();
             self.leftPanel.frame.onload = function() { self.redraw(ANUVidLib.LEFT); };
             self.rightPanel.frame = new Image();
@@ -447,6 +452,65 @@ class ANUVidLib {
         }
 
         this.paint(tgtPanel);
+    }
+
+    // Keyframe operations.
+    generateKeyframes() {
+        var delta = parseFloat(prompt("Generate keyframe every how many seconds?", "5"));
+        delta = Math.round(FPS * delta) / FPS;
+        if (delta <= 0)
+            return false;
+
+        this.keyframes = [];
+        var ts = 0.0;
+        while (ts < this.video.duration) {
+            this.keyframes.push(ts);
+            ts += delta;
+        }
+
+        // TODO: better keyframe visualisation
+        var el = document.getElementById("keyframeListId");
+        if (this.keyframes.length == 0) {
+            el.innerHTML = "(no keyframes)";
+            return;
+        }
+        el.innerHTML = "";
+        for (var i = 0; i < this.keyframes.length; i++) {
+            if (i > 0) el.innerHTML += ", ";
+            el.innerHTML += this.keyframes[i];
+        }
+
+        return true;
+    }
+
+    nextKeyframe() {
+        // find next keyframe (based on right panel)
+        var i = 1;
+        while ((i < this.keyframes.length) && (this.keyframes[i] <= this.rightPanel.timestamp)) {
+            i += 1;
+        }
+
+        if (i < this.keyframes.length) {
+            this.seekToTime(this.keyframes[i - 1], this.keyframes[i]);
+            return true;
+        }
+
+        return false;
+    }
+
+    prevKeyframe() {
+        // find previous keyframe (based on left panel)
+        var i = 0;
+        while ((i < this.keyframes.length) && (this.keyframes[i] < this.leftPanel.timestamp)) {
+            i += 1;
+        }
+
+        if (i < this.keyframes.length) {
+            this.seekToTime(i == 0 ? 0.0 : this.keyframes[i - 1], this.keyframes[i]);
+            return true;
+        }
+
+        return false;
     }
 
     // Get active object at position (x, y) on given panel.

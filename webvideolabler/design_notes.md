@@ -34,7 +34,7 @@ TODO
 |-----------|-------------|
 | timestamp | timestamp associated with the keyframe |
 
-**Operations:** generate (sequence), add, delete, jump to, jump to next 
+**Operations:** generate (sequence), add, delete, jump to, jump to next, visualize, export frames
 
 ### Video Segments (Clips)
 

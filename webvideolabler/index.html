@@ -93,15 +93,24 @@
                 play(); return true;
 
             case 0xBC:  // comma, <
-                document.getElementById('leftslider').focus();
+                v.prevKeyframe();
                 return true;
 
             case 0xBE:  // period, >
-                document.getElementById('rightslider').focus();
+                v.nextKeyframe();
                 return true;
 
             case 0xBB:  // plus, equals
                 newclip(); return true;
+
+            case 0xDB:  // [, {
+                document.getElementById('leftslider').focus();
+                return true;
+
+            case 0xDD:  // ], }
+                document.getElementById('rightslider').focus();
+                return true;
+
             }
 
             return false;
@@ -184,10 +193,12 @@
 
     <fieldset style="background: #f7f7f7;">
         <legend>Keyframes</legend>
-        TODO: load/generate, export, navigate
+            <button title="generate" onclick="v.generateKeyframes();">&#x23F2; generate</button>
+            <span id="keyframeListId">(no keyframes)</span>
+            <font color="red">TODO: load, export, add/remove, visualize</font>
         <div style="float: right;">
-            <button title="previous" onclick="v.seekToTime(Math.max(v.leftPanel.timestamp - 1.0, 0.0), v.leftPanel.timestamp);">&lt;</button>
-            <button title="next" onclick="v.seekToTime(v.rightPanel.timestamp, Math.min(v.rightPanel.timestamp + 1.0, v.video.duration));">&gt;</button>
+            <button title="previous" onclick="v.prevKeyframe();">&lt;</button>
+            <button title="next" onclick="v.nextKeyframe();">&gt;</button>
         </div>
         <div style="clear: both;"></div>
     </fieldset>
@@ -228,8 +239,10 @@
 <pre>
     h           :: help (this window)
     p           :: play video segment
-    comma, <    :: select left slider
-    period, >   :: select right slider
+    comma, <    :: advance to next keyframe
+    period, >   :: retreat to previous keyframe
+    [, {        :: select left slider
+    ], }        :: select right slider
     left-arrow  :: previous frame (when slider is selected)
     right-arrow :: next frame (when slider is selected)
     page-up     :: jump to previous 10% of video (when slider is selected)
