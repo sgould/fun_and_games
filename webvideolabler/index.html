@@ -86,6 +86,10 @@
             }
             console.log("key " + e.code + " (0x" + e.keyCode.toString(16) + ")");
             switch (e.keyCode) {
+            case 0x2E:  // delete
+                v.deleteActiveObject();
+                return true;
+
             case 0x48:  // H
                 showhelp(); return true;
 
@@ -248,6 +252,8 @@
     page-up     :: jump to previous 10% of video (when slider is selected)
     page-down   :: jump to next 10% of video (when slider is selected)
     plus (+)    :: add a new segment
+    delete      :: delete currently active object
+    shift       :: duplicate currently active object when mouse down
 </pre>
         <p/>
 

@@ -26,6 +26,7 @@ TODO:
     18. keyframes (load/save, add, navigate)
     19. proper modules and imports
     20. flash errors/warnings (see things logged to console or functions returning false)
+    21. get to work on a tablet
 */
 
 /*
@@ -96,9 +97,10 @@ class DragContext {
 
     constructor() {
         this.mode = DragContext.NONE;
-        this.startX = null;
-        this.startY = null;
+        this.mouseDownX = null;
+        this.mouseDownY = null;
         this.anchor = null;
+        this.newObject = false;
     }
 }
 
@@ -176,6 +178,7 @@ class ANUVidLib {
             self.rightPanel.timestamp = null;
 
             self.keyframes = [];
+            self.generateKeyframes(5); // generate keyframes event five seconds
             self.objectList.length = Math.floor(FPS * self.video.duration);
             for (var i = 0; i < self.objectList.length; i++) {
                 self.objectList[i] = [];
@@ -454,9 +457,13 @@ class ANUVidLib {
         this.paint(tgtPanel);
     }
 
-    // Keyframe operations.
-    generateKeyframes() {
-        var delta = parseFloat(prompt("Generate keyframe every how many seconds?", "5"));
+    // Generate keyframes are regular interval. If delta is null then requests time interval from user.
+    generateKeyframes(delta = null) {
+        if (delta == null) {
+            var retVal = prompt("Generate keyframe every how many seconds?", "5");
+            if (retVal == null) return false;
+            delta = parseFloat(retVal);
+        }
         delta = Math.round(FPS * delta) / FPS;
         if (delta <= 0)
             return false;
@@ -525,10 +532,33 @@ class ANUVidLib {
         return null;
     }
 
+    // Delete the active object (as long as it's not being modified).
+    deleteActiveObject() {
+        if ((this.activeObject != null) && (this.dragContext.mode == DragContext.NONE)) {
+            var frameIndex = this.time2indx(this.leftPanel.timestamp);
+            for (var i = 0; i < this.objectList[frameIndex].length; i++) {
+                if (this.objectList[frameIndex][i] === this.activeObject) {
+                    this.objectList[frameIndex].splice(i, 1);
+                    break;
+                }
+            }
+            frameIndex = this.time2indx(this.rightPanel.timestamp);
+            for (var i = 0; i < this.objectList[frameIndex].length; i++) {
+                if (this.objectList[frameIndex][i] === this.activeObject) {
+                    this.objectList[frameIndex].splice(i, 1);
+                    break;
+                }
+            }
+
+            this.activeObject = null;
+            this.redraw();
+        }
+    }
+
     // Process mouse movement over a panel.
     mousemove(event, side) {
         console.assert((side == ANUVidLib.LEFT) || (side == ANUVidLib.RIGHT), "invalid side");
-        console.log("mouse moving in " + ((side == ANUVidLib.LEFT) ? "left" : "right"));
+        //console.log("mouse moving in " + ((side == ANUVidLib.LEFT) ? "left" : "right"));
 
         // get current panel
         const panel = (side == ANUVidLib.LEFT) ? this.leftPanel : this.rightPanel;
@@ -582,16 +612,32 @@ class ANUVidLib {
     // Process mouse button press inside panel.
     mousedown(event, side) {
         const panel = (side == ANUVidLib.LEFT) ? this.leftPanel : this.rightPanel;
-        if (this.activeObject != null) {
+        if ((this.activeObject != null) && (!event.shiftKey)) {
+            // resize active object
             this.dragContext.anchor = this.activeObject.oppositeAnchor(event.offsetX, event.offsetY, panel.canvas.width, panel.canvas.height);
             if (this.dragContext.anchor == null) {
                 this.dragContext.mode = DragContext.MOVING;
             } else {
                 this.dragContext.mode = DragContext.SIZING;
             }
-            this.dragContext.startX = event.offsetX;
-            this.dragContext.startY = event.offsetY;
+            this.dragContext.newObject = false;
+        } else {
+            // add new object
+            const frameIndex = this.time2indx(panel.timestamp);
+            if (this.activeObject != null) {
+                this.activeObject = this.activeObject.clone();
+                this.dragContext.mode = DragContext.MOVING;
+            } else {
+                this.activeObject = new ObjectBox(event.offsetX / panel.canvas.width, event.offsetY / panel.canvas.height, 0, 0);
+                this.dragContext.mode = DragContext.SIZING;
+            }
+            this.objectList[frameIndex].push(this.activeObject);
+            this.dragContext.anchor = this.activeObject.oppositeAnchor(event.offsetX, event.offsetY, panel.canvas.width, panel.canvas.height);
+            this.dragContext.newObject = true;
         }
+
+        this.dragContext.mouseDownX = event.offsetX;
+        this.dragContext.mouseDownY = event.offsetY;
     }
 
     // Process mouse button press inside panel.
@@ -599,6 +645,15 @@ class ANUVidLib {
         this.dragContext.mode = DragContext.NONE;
 
         if (this.activeObject != null) {
+            if (this.dragContext.newObject) {
+                // delete mouse hasn't moved
+                if ((event.offsetX == this.dragContext.mouseDownX) && (event.offsetY == this.dragContext.mouseDownY)) {
+                    console.log("removing new object");
+                    const frameIndex = this.time2indx(side == ANUVidLib.LEFT ? this.leftPanel.timestamp : this.rightPanel.timestamp);
+                    this.objectList[frameIndex].pop();
+                }
+            }
+
             this.activeObject = null;
             this.paint((side == ANUVidLib.LEFT) ? this.leftPanel : this.rightPanel);
             if (this.leftPanel.timestamp == this.rightPanel.timestamp) {
