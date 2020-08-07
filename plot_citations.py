@@ -9,7 +9,7 @@ import re
 
 import seaborn as sea
 import matplotlib.pyplot as plt
-sea.set(font_scale=1.4)
+sea.set(font_scale=1.2)
 
 from datetime import datetime
 import numpy as np
@@ -61,12 +61,12 @@ def bar_plot_with_trend(years, counts, prediction=None, width=0.8):
     """Generate a bar plot showing trend line and optional prediction."""
 
     if prediction is not None:
-        plt.bar(years[-1], prediction, width, color=[1.0, 1.0, 1.0])
-        plt.plot([year + 0.5 * width for year in years[-2:]], [counts[-2], prediction], 'ko--', lw=2)
+        plt.bar(years[-1], prediction, width, align='center', color=[1.0, 1.0, 1.0])
+        plt.plot([year for year in years[-2:]], [counts[-2], prediction], 'ko--', lw=2)
 
     plt.bar(years, counts, width, color=[0.75, 0.75, 0.75])
-    plt.plot([year + 0.5 * width for year in years], counts, 'ko-', lw=2)
-    plt.xticks([year + 0.5 * width for year in years], years)
+    plt.plot(years, counts, 'ko-', lw=2)
+    plt.xticks(years, years)
 
 
 if __name__ == "__main__":

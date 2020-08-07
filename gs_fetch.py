@@ -96,14 +96,14 @@ sea.set(font_scale=1.2)
 
 plt.figure()
 width = 0.8
-plt.bar(np.linspace(0, len(y1), len(y1)), y1, width)
-plt.bar(np.linspace(0, len(y2), len(y2)), y2, width, color=[0.8, 0.0, 0.0])
-plt.bar(np.linspace(0, len(y3), len(y3)), y3, width, color=[0.0, 0.8, 0.0])
+plt.bar(np.linspace(0, len(y1), len(y1)), y1, width, align='center')
+plt.bar(np.linspace(0, len(y2), len(y2)), y2, width, color=[0.8, 0.0, 0.0], align='center')
+plt.bar(np.linspace(0, len(y3), len(y3)), y3, width, color=[0.0, 0.8, 0.0], align='center')
 if 0:
-    plt.xticks(np.linspace(0, len(x), len(x)) + 0.5 * width, x)
+    plt.xticks(np.linspace(0, len(x), len(x)), x)
     plt.xlabel('Researcher (Group)'); plt.ylabel('Citations')
 else:
-    plt.xticks(np.linspace(0, len(x), len(x)) + 0.5 * width, n)
+    plt.xticks(np.linspace(0, len(x), len(x)), n)
     plt.xlabel('Researcher (Name)'); plt.ylabel('Citations')
     plt.xticks(rotation=90)
 
