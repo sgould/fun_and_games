@@ -83,7 +83,7 @@ for key in sorted(data.keys()):
 
 x, y1, y2, y3, n = [], [], [], [], []
 for key in sorted(data.keys()):
-    data[key] = sorted(data[key])
+    data[key] = sorted(data[key], key=lambda v: v[0])
     x += [key] * len(data[key])
     y1 += [v[0] for v in data[key]]
     y2 += [v[1] for v in data[key]]

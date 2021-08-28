@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     plt.subplot(2, 1, 2)
     counts = np.cumsum(parser.citeCounts)
-    bar_plot_with_trend(parser.citeYears, counts, year_prediction + counts[-2])
+    bar_plot_with_trend(parser.citeYears, counts, None if year_prediction is None else year_prediction + counts[-2])
     plt.xlabel('Year'); plt.ylabel('Total Citations')
 
     plt.tight_layout(pad=0.2)

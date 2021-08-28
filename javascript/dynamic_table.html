@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dynamic Table</title>
+    <style>
+    body {
+        font-family:Arial;
+        font-size:24px;
+    }
+    table {
+       border-collapse: collapse;
+    }
+    td {
+        border-width: 1px 1px 1px 1px;
+        border-color: #0000000;
+        border-style: solid;
+    }
+    @media print {
+        .noprint {
+            visibility: hidden;
+        }
+    }
+    </style>
+    <script type="text/javascript">
+    function init() {
+        document.getElementById('start_date').valueAsDate = new Date();
+    }
+    function generate() {
+        var tab = document.getElementById("the_table");
+        tab.innerHTML = "";
+
+        startDate = new Date(document.getElementById("start_date").value);
+        interval = Math.max(1, parseInt(document.getElementById("interval").value));
+        numRows = Math.max(1, parseInt(document.getElementById("rows").value));
+        numCols = Math.max(1, parseInt(document.getElementById("cols").value));
+        for (var i = 0; i < numRows; i++) {
+            var tr = document.createElement("tr");
+            if (i % 2 == 0) {
+                tr.style.backgroundColor = "#e7e7e7";
+            }
+            var td = document.createElement("td");
+            var text = document.createTextNode(startDate.toLocaleDateString());
+            td.appendChild(text);
+            tr.appendChild(td);
+            for (var j = 1; j < numCols; j++) {
+                var td = document.createElement("td");
+                tr.appendChild(td);
+            }
+            tab.appendChild(tr);
+
+            startDate.setDate(startDate.getDate() + interval);
+        }
+    }
+    </script>
+</head>
+<body onload="init();">
+
+<center>
+<table class="noprint">
+<tr>
+<td style="border: 0px;"><b>Start Date:&nbsp;</b></td>
+<td style="border: 0px;"><input type="date" id="start_date" value=""></td>
+</tr>
+<tr>
+<td style="border: 0px;"><b>Update Interval:&nbsp;</b></td>
+<td style="border: 0px;"><input type="text" id="interval" value="14" size="3" maxlength="3"> days</td>
+</tr>
+<tr>
+<td style="border: 0px;"><b>Table Size: </b></td>
+<td style="border: 0px;"><input type="text" id="rows" value="26" size="3" maxlength="3"> rows by <input type="text" id="cols" value="5" size="3" maxlength="3"> columns</td>
+</tr>
+<tr>
+<td style="border: 0px;"><input type="button" value="generate" onclick="generate(); return true;"></td>
+<td style="border: 0px;"></td>
+</tr>
+</table>
+<p>
+
+<table id="the_table" style="table-layout: fixed; width: 100%; cell-padding: 2px;">
+</table>
+
+</body>
+</html>
