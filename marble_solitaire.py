@@ -12,8 +12,6 @@
 #                   (8,3) (8,4) (8,5)
 #
 
-# TODO: convert to numpy
-
 import copy
 import heapq
 import time
@@ -80,18 +78,6 @@ class GameState:
 
         return state
 
-    @staticmethod
-    def rotate(board):
-        """Returns rotated board."""
-        return np.rot90(board)
-        #return np.array([[board[8 - j][i] for j in range(9)] for i in range(9)], dtype=board.dtype)
-
-    @staticmethod
-    def mirror(board):
-        """Returns mirrored board in x-direction."""
-        return np.fliplr(board)
-        #return np.array([board[8 - i] for i in range(9)], dtype=board.dtype)
-
     def solved(self, anyPosition=True):
         """Returns True if solved and False otherwise."""
         return (self.count == 1) and (anyPosition or (self.board[4, 4] == 1))
@@ -120,19 +106,6 @@ class GameState:
         visited[marbles[j][0], marbles[j][1]] = 1
 
         # add remaining edges
-        """
-        while (len(dist)):
-            c, i, j = dist.pop(0)
-            if (visited[marbles[i][0], marbles[i][1]] == 1) and (visited[marbles[j][0], marbles[j][1]] == 1):
-                continue
-            if visited[marbles[i][0], marbles[i][1]] != visited[marbles[j][0], marbles[j][1]]:
-                cost += c
-                visited[marbles[i][0], marbles[i][1]] = 1
-                visited[marbles[j][0], marbles[j][1]] = 1
-                dist.sort(key=lambda x: x[0])
-            else:
-                dist.append((c, i, j))
-        """
         for ni in range(n-2):
             bFound = False
             for c, i, j in dist:
@@ -146,48 +119,32 @@ class GameState:
                     break
             assert bFound
 
-        return cost * cost / self.count
+        return cost
 
     def __eq__(self, other):
         if (self.count != other.count):
             return False
         if np.array_equal(self.board, other.board):
             return True
-        if np.array_equal(np.transpose(self.board), other.board):
+        other_transposed = np.transpose(other.board)
+        if np.array_equal(self.board, other_transposed):
             return True
 
         b = np.fliplr(self.board)
         if np.array_equal(b, other.board):
             return True
-        if np.array_equal(np.transpose(b), other.board):
+        if np.array_equal(b, other_transposed):
             return True
         b = np.flipud(b)
         if np.array_equal(b, other.board):
             return True
-        if np.array_equal(np.transpose(b), other.board):
+        if np.array_equal(b, other_transposed):
             return True
         b = np.fliplr(b)
         if np.array_equal(b, other.board):
             return True
-        if np.array_equal(np.transpose(b), other.board):
+        if np.array_equal(b, other_transposed):
             return True
-        return False
-
-        """
-        if (GameState.mirror(self.board) == other.board).all():
-            return True
-        b = GameState.rotate(self.board)
-        if (b == other.board).all():
-            return True
-        if (GameState.mirror(b) == other.board).all():
-            return True
-        b = GameState.rotate(b)
-        if (b == other.board).all():
-            return True
-        b = GameState.rotate(b)
-        if (b == other.board).all():
-            return True
-        """
         return False
 
     def __lt__(self, other):
@@ -197,7 +154,7 @@ class GameState:
         return "\n".join(["".join(["O" if self.board[i, j] == 1 else "." if self.board[i, j] == 0 else " " for j in range(9)]) for i in range(9)])
 
     def __hash__(self):
-        return int(sum([abs(i - 4) + abs(j - 4) for i in range(9) for j in range(9) if self.board[i, j] == 1]))
+        return int(sum([pow(2, abs(i - 4) + abs(j - 4)) for i in range(9) for j in range(9) if self.board[i, j] == 1]))
 
 
 def prioritySearch(maxMoves=None):
@@ -209,19 +166,18 @@ def prioritySearch(maxMoves=None):
     game = GameState()
     heapq.heappush(frontier, (game.mst(), game))
     seen = set()
-    #seen = [[] for i in range(44)]
 
     while (len(frontier)):
         movesEvaluated += 1
         score, game = heapq.heappop(frontier)
 
         if game.solved():
+            print("\rtried {} moves, skipped {} moves, {} marbles remaining, {} games in frontier".format(movesEvaluated, movesSkipped, game.count, len(frontier)), end="")
             break
         if (maxMoves is not None) and (movesEvaluated >= maxMoves):
             break
 
         seen.add(game)
-        #seen[game.count].append(game)
         legalMove = False
         for i in range(9):
             for j in range(9):
@@ -230,17 +186,22 @@ def prioritySearch(maxMoves=None):
                 for d in range(4):
                     attempt = game.move(i, j, d)
                     if attempt is not None:
-                        legalMove = True
+                        #legalMove = True
                         if attempt in seen:
                             movesSkipped += 1
                         else:
-                            item = (attempt.mst(), attempt)
                             seen.add(attempt)
-                            heapq.heappush(frontier, item)
-                            #if item not in frontier:
-                            #    heapq.heappush(frontier, item)
-                            #else:
-                            #    movesSkipped += 1
+                            cost = attempt.mst()
+
+                            # check solveable heuristic
+                            if cost >= 2 * attempt.count:
+                                movesSkipped += 1
+                            else:
+                                legalMove = True
+                                #score = cost * cost / attempt.count
+                                #score = 2 * attempt.count - cost
+                                score = attempt.count
+                                heapq.heappush(frontier, (score, attempt))
 
         if legalMove is False:
             print("\rtried {} moves, skipped {} moves, {} marbles remaining, {} games in frontier".format(movesEvaluated, movesSkipped, game.count, len(frontier)), end="")
