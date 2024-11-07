@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ----------------------------------------------------------------------------
-# VIZEXPSUMCAL Exponential Sum Calendar
+# GENEXPSUMCAL Exponential Sum Calendar
 # Stephen Gould and Isaac Waisberg
 #
 # Generates a calendar month based on exponential sum visualisations of
@@ -8,11 +8,11 @@
 # Compile the resulting tex file with 'pdflatex -shell-escape %.tex'.
 #
 # Example usage (from Python):
-#   from vizSumExpCal import calendar
-#   calendar("vizExpSumNov1973.tex", 11, 1973, 'pstricks')
+#   from genExpSumCal import calendar
+#   calendar("expSumCalNov1973.tex", 11, 1973, 'pstricks')
 #
 # Example usage (from command line):
-#   > python vizExpSumCal.py --month 11 --year 1973 --file vizSUmExpNov1973.tex
+#   > python genExpSumCal.py --month 11 --year 1973 --file expSumCalNov1973.tex
 # ----------------------------------------------------------------------------
 
 import math
@@ -142,24 +142,34 @@ def calendar(filename, month, year, method='pstricks'):
 # --- main ------------------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
+
+    # Uncomment to just create via code, e.g.,
+    # calendar("expSumCalNov2024.tex", 11, 2024, 'tikz')
+    # calendar("expSumCalNov1973.tex", 11, 1973, 'pstricks')
+    # sys.exit()
+    
     import argparse
     import datetime
+    import subprocess
 
-    parser = argparse.ArgumentParser(description='VIZEXPSUMCAL: Generates Monthly Calendar of Exponential Sums')
+    parser = argparse.ArgumentParser(description='GENEXPSUMCAL: Generates Monthly Calendar of Exponential Sums')
     parser.add_argument('--month', type=int, default=None, help='Provide month as an integer (default: current month).')
     parser.add_argument('--year', type=int, default=None, help='Provide year as an integer (default: current year).')
     parser.add_argument('--file', type=str, default=None, help='Output filename (deafult: "vizSumMMMYYYY.tex").')
     parser.add_argument('--method', type=str, default='pstricks', help='Rendering method ("pstricks" or "tikz").')
-
-    # TODO: argument to automatically compile
-
+    parser.add_argument('--compile', type=bool, default=False, action=argparse.BooleanOptionalAction, help='Invoke pdflatex to generate PDF.')
+    
     args = parser.parse_args()
+    print(args.compile)
+    
     month = datetime.datetime.now().month if args.month is None else args.month
     year = datetime.datetime.now().year if args.year is None else args.year
     filename = args.file
     if filename is None:
-        filename = "vizSumExp{}{:04}.tex".format(month_name[month][0:3], year)
+        filename = "expSumCal{}{:04}.tex".format(month_name[month][0:3], year)
 
     calendar(filename, month, year, args.method)
-    #calendar("vizExpSumNov1973.tex", 11, 1973, 'pstricks')
 
+    if args.compile:
+        print("Compiling calendar from {}...".format(filename))
+        subprocess.run(["pdflatex", "-shell-escape", filename])
