@@ -160,8 +160,7 @@ if __name__ == "__main__":
     parser.add_argument('--compile', type=bool, default=False, action=argparse.BooleanOptionalAction, help='Invoke pdflatex to generate PDF.')
     
     args = parser.parse_args()
-    print(args.compile)
-    
+
     month = datetime.datetime.now().month if args.month is None else args.month
     year = datetime.datetime.now().year if args.year is None else args.year
     filename = args.file
