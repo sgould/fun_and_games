@@ -59,7 +59,7 @@ def sequence2pstricks(x_points, y_points, indent=1):
     join_str = ""
     cmd_str = ("\t" * indent) + "\\psline"
     out_str = ""
-    for start_indx in range(0, len(x_points), 100):
+    for start_indx in range(0, len(x_points)-1, 100):
         end_indx = min(start_indx + 101, len(x_points))
         out_str += cmd_str
         out_str += join_str.join(["({:d},{:d})".format(int(1000*(x - x_min)/(x_max - x_min)),
