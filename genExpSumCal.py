@@ -155,7 +155,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='GENEXPSUMCAL: Generates Monthly Calendar of Exponential Sums')
     parser.add_argument('--month', type=int, default=None, help='Provide month as an integer (default: current month).')
     parser.add_argument('--year', type=int, default=None, help='Provide year as an integer (default: current year).')
-    parser.add_argument('--file', type=str, default=None, help='Output filename (deafult: "vizSumMMMYYYY.tex").')
+    parser.add_argument('--file', type=str, default=None, help='Output filename (deafult: "expSumCalMMMYYYY.tex").')
     parser.add_argument('--method', type=str, default='pstricks', help='Rendering method ("pstricks" or "tikz").')
     parser.add_argument('--compile', type=bool, default=False, action=argparse.BooleanOptionalAction, help='Invoke pdflatex to generate PDF.')
     
