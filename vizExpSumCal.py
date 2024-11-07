@@ -1,10 +1,23 @@
 #!/usr/bin/env python3
-# -----------------------------------------------------------------------
-# VIZEXPSUM
-# -----------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# VIZEXPSUMCAL Exponential Sum Calendar
+# Stephen Gould and Isaac Waisberg
+#
+# Generates a calendar month based on exponential sum visualisations of
+# John D. Cook (https://www.johndcook.com/expsum/) as a LaTeX file.
+# Compile the resulting tex file with 'pdflatex -shell-escape %.tex'.
+#
+# Example usage (from Python):
+#   from vizSumExpCal import calendar
+#   calendar("vizExpSumNov1973.tex", 11, 1973, 'pstricks')
+#
+# Example usage (from command line):
+#   > python vizExpSumCal.py --month 11 --year 1973 --file vizSUmExpNov1973.tex
+# ----------------------------------------------------------------------------
 
 import math
 from calendar import monthrange, month_name
+
 
 def term(n, day, month, year):
     """Evaluate the n-th term in the sequence."""
@@ -15,7 +28,7 @@ def term(n, day, month, year):
 
 
 def sequence(day, month, year, N=None):
-    """Evaluate the a sequence of length N."""
+    """Evaluate a sequence of length N."""
     if N is None:
         N = 2 * math.lcm(day, month, year) + 1
 
@@ -56,7 +69,7 @@ def sequence2pstricks(x_points, y_points, indent=1):
     #return ("\t" * indent) + "\\psline" + join_str.join(["({:d},{:d})".format(int(1000*(x - x_min)/(x_max - x_min)), int(1000*(y - y_min)/(y_max - y_min))) for x, y in zip(x_points, y_points)]) + "\n"
 
 
-def calendar(filename, month, year, method='tikz'):
+def calendar(filename, month, year, method='pstricks'):
     """Produce a LaTeX calendar for the given month."""
     assert (1 <= month <= 12)
     assert method in ('tikz', 'pstricks')
@@ -129,10 +142,24 @@ def calendar(filename, month, year, method='tikz'):
 # --- main ------------------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    # TODO: add command line options to input month/year and optionally invoke pdflatex
-    #calendar("vizExpSumOct2024.tex", 10, 2024)
-    calendar("vizExpSumNov2024.tex", 11, 2024, 'pstricks')
-    #calendar("vizExpSumDec2024.tex", 12, 2024)
-    #calendar("vizExpSumJan2025.tex", 1, 2025)
-    calendar("vizExpSumNov1973.tex", 11, 1973, 'pstricks')
+    import argparse
+    import datetime
+
+    parser = argparse.ArgumentParser(description='VIZEXPSUMCAL: Generates Monthly Calendar of Exponential Sums')
+    parser.add_argument('--month', type=int, default=None, help='Provide month as an integer (default: current month).')
+    parser.add_argument('--year', type=int, default=None, help='Provide year as an integer (default: current year).')
+    parser.add_argument('--file', type=str, default=None, help='Output filename (deafult: "vizSumMMMYYYY.tex").')
+    parser.add_argument('--method', type=str, default='pstricks', help='Rendering method ("pstricks" or "tikz").')
+
+    # TODO: argument to automatically compile
+
+    args = parser.parse_args()
+    month = datetime.datetime.now().month if args.month is None else args.month
+    year = datetime.datetime.now().year if args.year is None else args.year
+    filename = args.file
+    if filename is None:
+        filename = "vizSumExp{}{:04}.tex".format(month_name[month][0:3], year)
+
+    calendar(filename, month, year, args.method)
+    #calendar("vizExpSumNov1973.tex", 11, 1973, 'pstricks')
 
