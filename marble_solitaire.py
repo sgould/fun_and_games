@@ -27,6 +27,15 @@ class GameState:
         self.count = 44
         self.moves = []
 
+    @staticmethod
+    def dir2str(d):
+        """Convert direction to string."""
+        if   d == 0: return "down"
+        elif d == 1: return "right"
+        elif d == 2: return "up"
+        elif d == 3: return "left"
+        return None
+
     def move(self, i, j, d):
         """Execute a jump from (i,j) in direction d. Returns new GameState if successful. Otherwise None."""
         #assert (0 <= i < 9) and (0 <= j < 9) and (0 <= d < 4)
@@ -40,25 +49,21 @@ class GameState:
             if (self.board[i + 1, j] != 1): return None
             if (self.board[i + 2, j] != 0): return None
             di, dj = 1, 0
-            dstr = "down"
         elif d == 1:
             if (j >= 7): return None
             if (self.board[i, j + 1] != 1): return None
             if (self.board[i, j + 2] != 0): return None
             di, dj = 0, 1
-            dstr = "right"
         elif d == 2:
             if (i < 2): return None
             if (self.board[i - 1, j] != 1): return None
             if (self.board[i - 2, j] != 0): return None
             di, dj = -1, 0
-            dstr = "up"
         else:
             if (self.board[i, j - 1] != 1): return None
             if (self.board[i, j - 2] != 0): return None
             if (j < 2): return None
             di, dj = 0, -1
-            dstr = "left"
 
         # check move stays within board
         #if not (0 <= i + 2 * di < 9) or not (0 <= j + 2 * dj < 9):
@@ -74,7 +79,55 @@ class GameState:
         state.board[i + di, j + dj] = 0
         state.board[i + 2 * di, j + 2 * dj] = 1
         state.count = self.count - 1
-        state.moves.append((i+1, j+1, dstr))
+        state.moves.append((i, j, d))
+
+        return state
+
+    def unmove(self, i, j, d):
+        """Undo a from jump (i,j) in direction d. Useful for building an endgame book.
+        Returns new GameState if successful else None."""
+        #assert (0 <= i < 9) and (0 <= j < 9) and (0 <= d < 4)
+
+        # check that position is empty (i.e., used to contain a marble)
+        if self.board[i, j] != 0:
+            return None
+
+        if d == 0:
+            if (i >= 7): return None
+            if (self.board[i + 1, j] != 0): return None
+            if (self.board[i + 2, j] != 1): return None
+            di, dj = 1, 0
+        elif d == 1:
+            if (j >= 7): return None
+            if (self.board[i, j + 1] != 0): return None
+            if (self.board[i, j + 2] != 1): return None
+            di, dj = 0, 1
+        elif d == 2:
+            if (i < 2): return None
+            if (self.board[i - 1, j] != 0): return None
+            if (self.board[i - 2, j] != 1): return None
+            di, dj = -1, 0
+        else:
+            if (self.board[i, j - 1] != 0): return None
+            if (self.board[i, j - 2] != 1): return None
+            if (j < 2): return None
+            di, dj = 0, -1
+
+        # check move stays within board
+        #if not (0 <= i + 2 * di < 9) or not (0 <= j + 2 * dj < 9):
+        #    assert None
+
+        # check that there exists an empty space to jump and that the destination has a marble
+        #if (self.board[i + di, j + dj] != 0) or (self.board[i + 2 * di, j + 2 * dj] != 1):
+        #   return None
+
+        # make the move
+        state = copy.deepcopy(self)
+        state.board[i, j] = 1
+        state.board[i + di, j + dj] = 1
+        state.board[i + 2 * di, j + 2 * dj] = 0
+        state.count = self.count + 1
+        state.moves.append((i, j, d))
 
         return state
 
@@ -82,16 +135,12 @@ class GameState:
         """Returns True if solved and False otherwise."""
         return (self.count == 1) and (anyPosition or (self.board[4, 4] == 1))
 
-    def coords(self):
-        """Returns coordinates of remaining marbles."""
-        return tuple((i, j) for i in range(9) for j in range(9) if self.board[i, j] == 1)
-
     def mst(self):
         """Returns cost of minimum hamming-distance (L1) spanning tree."""
         if self.count <= 1:
             return 0
 
-        marbles = self.coords()
+        marbles = np.transpose(np.nonzero(self.board == 1))
         n = len(marbles)
         dist = [(abs(marbles[i][0] - marbles[j][0]) + abs(marbles[i][1] - marbles[j][1]), i, j) for i in range(1,n) for j in range(i)]
         dist.sort(key=lambda x: x[0])
@@ -109,8 +158,8 @@ class GameState:
         for ni in range(n-2):
             bFound = False
             for c, i, j in dist:
-                if (visited[marbles[i][0], marbles[i][1]] == 1) and (visited[marbles[j][0], marbles[j][1]] == 1):
-                    continue
+                #if (visited[marbles[i][0], marbles[i][1]] == 1) and (visited[marbles[j][0], marbles[j][1]] == 1):
+                #    continue
                 if visited[marbles[i][0], marbles[i][1]] != visited[marbles[j][0], marbles[j][1]]:
                     cost += c
                     visited[marbles[i][0], marbles[i][1]] = 1
@@ -154,7 +203,8 @@ class GameState:
         return "\n".join(["".join(["O" if self.board[i, j] == 1 else "." if self.board[i, j] == 0 else " " for j in range(9)]) for i in range(9)])
 
     def __hash__(self):
-        return int(sum([pow(2, abs(i - 4) + abs(j - 4)) for i in range(9) for j in range(9) if self.board[i, j] == 1]))
+        return int(sum([pow((i - 4) * (i - 4) + (j - 4) * (j - 4), 2) for i, j in zip(*np.nonzero(self.board == 1))]))
+        #return int(sum([pow(2, abs(i - 4) + abs(j - 4)) for i, j in zip(*np.where(self.board == 1))]))
 
 
 def prioritySearch(maxMoves=None):
@@ -164,7 +214,7 @@ def prioritySearch(maxMoves=None):
     movesSkipped = 0
     frontier = []
     game = GameState()
-    heapq.heappush(frontier, (game.mst(), game))
+    heapq.heappush(frontier, (0, game))
     seen = set()
 
     while (len(frontier)):
@@ -173,41 +223,40 @@ def prioritySearch(maxMoves=None):
 
         if game.solved():
             print("\rtried {} moves, skipped {} moves, {} marbles remaining, {} games in frontier".format(movesEvaluated, movesSkipped, game.count, len(frontier)), end="")
+            print("\n...{}\n".format([(i + 1, j + 1, GameState.dir2str(d)) for i, j, d in game.moves]), end="")
             break
         if (maxMoves is not None) and (movesEvaluated >= maxMoves):
             break
 
         seen.add(game)
         legalMove = False
-        for i in range(9):
-            for j in range(9):
-                if game.board[i, j] != 1:
-                    continue
-                for d in range(4):
-                    attempt = game.move(i, j, d)
-                    if attempt is not None:
-                        #legalMove = True
-                        if attempt in seen:
+        for i, j in zip(*np.nonzero(game.board == 1)):
+            for d in range(4):
+                attempt = game.move(i, j, d)
+                if attempt is not None:
+                    #legalMove = True
+                    if attempt in seen:
+                        movesSkipped += 1
+                    else:
+                        seen.add(attempt)
+                        cost = attempt.mst()
+
+                        # check solveable heuristic
+                        if cost >= 2 * attempt.count:
                             movesSkipped += 1
                         else:
-                            seen.add(attempt)
-                            cost = attempt.mst()
-
-                            # check solveable heuristic
-                            if cost >= 2 * attempt.count:
-                                movesSkipped += 1
-                            else:
-                                legalMove = True
-                                #score = cost * cost / attempt.count
-                                #score = 2 * attempt.count - cost
-                                score = attempt.count
-                                heapq.heappush(frontier, (score, attempt))
+                            legalMove = True
+                            #score = cost * cost / attempt.count
+                            #score = 2 * attempt.count - cost
+                            score = attempt.count
+                            heapq.heappush(frontier, (score, attempt))
 
         if legalMove is False:
             print("\rtried {} moves, skipped {} moves, {} marbles remaining, {} games in frontier".format(movesEvaluated, movesSkipped, game.count, len(frontier)), end="")
             if game.count < bestFound:
                 bestFound = game.count
-                print("\n...{}\n".format(game.moves), end="")
+                print("\n...{}\n".format([(i+1, j+1, GameState.dir2str(d)) for i, j, d in game.moves]), end="")
+
 
 
 if __name__ == "__main__":
@@ -219,7 +268,7 @@ if __name__ == "__main__":
 
     pr = cProfile.Profile()
     pr.enable()
-    prioritySearch(2000)
+    prioritySearch(5000)
     pr.disable()
     s = io.StringIO()
     sortby = SortKey.CUMULATIVE
