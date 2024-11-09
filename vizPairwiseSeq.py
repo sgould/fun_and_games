@@ -24,6 +24,21 @@ def distance_to_centres(x, y, r):
     h2 = 0.5 * math.sqrt(4.0 * r ** 2 - (x[0] - x[1]) ** 2 - (y[0] - y[1]) ** 2)
     return (h1, h2)
 
+# generate digits of pi -------------------------------------------------
+
+def pi_digits(x):
+    """Generate x digits of pi. Source: https://stackoverflow.com/questions/9004789/1000-digits-of-pi-in-python."""
+    k,a,b,a1,b1 = 2,4,1,12,4
+    while x > 0:
+        p,q,k = k * k, 2 * k + 1, k + 1
+        a,b,a1,b1 = a1, b1, p*a + q*a1, p*b + q*b1
+        d,d1 = a/b, a1/b1
+        while d == d1 and x > 0:
+            yield int(d)
+            x -= 1
+            a,a1 = 10*(a % b), 10*(a1 % b1)
+            d,d1 = a/b, a1/b1
+
 # --- visualization -----------------------------------------------------
 
 def visualize_sequence(int_seq, block=True):
@@ -76,11 +91,11 @@ def visualize_sequence(int_seq, block=True):
             theta_1, theta_2 = theta_2, theta_1
 
         colour = cm(last_point)
-        ax.add_patch(pth.Arc((x_centre, y_centre), 2.0 * radius, 2.0 * radius, 0, 
-            theta_1, theta_2, color=colour, fill=False, linewidth=0.25))
+        ax.add_patch(pth.Arc((x_centre, y_centre), 2.0 * radius, 2.0 * radius,
+            angle=0, theta1=theta_1, theta2=theta_2, color=colour, fill=False, linewidth=0.25))
         last_point = next_point
 
-    plt.show(block)
+    plt.show(block=block)
 
 # --- main --------------------------------------------------------------
 
@@ -88,8 +103,12 @@ if __name__ == "__main__":
 
     int_seq = []
     if (len(sys.argv) == 1):
-        print("Generating a random sequence of digits...");
-        int_seq = [random.randint(0, 9) for i in range(2500)]
+        #print("Generating a random sequence of digits...")
+        #int_seq = [random.randint(0, 9) for i in range(2500)]
+        print("Generating digits of pi...")
+        int_seq = list(pi_digits(2500))
+        #print("Generating linear sequence...")
+        #int_seq = [i % 10 for i in range(2500)]
     else:
         print("Reading sequence from {0}...".format(sys.argv[1]))
         fh = open(sys.argv[1])
