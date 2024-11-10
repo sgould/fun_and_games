@@ -20,12 +20,16 @@ import numpy as np
 class GameState:
     """State of the board."""
 
+    hash_indx = np.array([[0, 0, 0, 65536, 16384, 65536, 0, 0, 0], [0, 0, 0, 2048, 512, 2048, 0, 0, 0], [0, 0, 0, 64, 16, 64, 0, 0, 0],
+                          [65536, 2048, 64, 4, 1, 4, 64, 2048, 65536], [16384, 512, 16, 1, 0, 1, 16, 512, 16384], [65536, 2048, 64, 4, 1, 4, 64, 2048, 65536],
+                          [0, 0, 0, 64, 16, 64, 0, 0, 0], [0, 0, 0, 2048, 512, 2048, 0, 0, 0], [0, 0, 0, 65536, 16384, 65536, 0, 0, 0]], dtype=int)
+
     def __init__(self):
         # 2d array representing the board (-1: illegal, 0: empty, 1:marble)
         self.board = np.array([[-1 if ((i < 3) or (i > 5)) and ((j < 3) or (j > 5)) else 1 for j in range(9)] for i in range(9)], dtype=np.int8)
         self.board[4, 4] = 0
         self.count = 44
-        self.moves = []
+        self.moves = np.empty((43, 3), dtype=np.int8)
 
     @staticmethod
     def dir2str(d):
@@ -79,7 +83,7 @@ class GameState:
         state.board[i + di, j + dj] = 0
         state.board[i + 2 * di, j + 2 * dj] = 1
         state.count = self.count - 1
-        state.moves.append((i, j, d))
+        state.moves[44 - self.count] = (i, j, d)
 
         return state
 
@@ -127,7 +131,7 @@ class GameState:
         state.board[i + di, j + dj] = 1
         state.board[i + 2 * di, j + 2 * dj] = 0
         state.count = self.count + 1
-        state.moves.append((i, j, d))
+        state.moves[self.count - 1] = (i, j, d)
 
         return state
 
@@ -203,7 +207,8 @@ class GameState:
         return "\n".join(["".join(["O" if self.board[i, j] == 1 else "." if self.board[i, j] == 0 else " " for j in range(9)]) for i in range(9)])
 
     def __hash__(self):
-        return int(sum([pow((i - 4) * (i - 4) + (j - 4) * (j - 4), 2) for i, j in zip(*np.nonzero(self.board == 1))]))
+        return int(np.sum(np.where(self.board == 1, GameState.hash_indx, 0)))
+        #return int(sum([pow((i - 4) * (i - 4) + (j - 4) * (j - 4), 2) for i, j in zip(*np.nonzero(self.board == 1))]))
         #return int(sum([pow(2, abs(i - 4) + abs(j - 4)) for i, j in zip(*np.where(self.board == 1))]))
 
 
@@ -215,7 +220,8 @@ def prioritySearch(maxMoves=None):
     frontier = []
     game = GameState()
     heapq.heappush(frontier, (0, game))
-    seen = set()
+    seen = set() # insert when added to frontier
+    seen.add(game)
 
     while (len(frontier)):
         movesEvaluated += 1
@@ -228,7 +234,6 @@ def prioritySearch(maxMoves=None):
         if (maxMoves is not None) and (movesEvaluated >= maxMoves):
             break
 
-        seen.add(game)
         legalMove = False
         for i, j in zip(*np.nonzero(game.board == 1)):
             for d in range(4):
@@ -251,11 +256,11 @@ def prioritySearch(maxMoves=None):
                             score = attempt.count
                             heapq.heappush(frontier, (score, attempt))
 
-        if legalMove is False:
+        if not legalMove:
             print("\rtried {} moves, skipped {} moves, {} marbles remaining, {} games in frontier".format(movesEvaluated, movesSkipped, game.count, len(frontier)), end="")
             if game.count < bestFound:
                 bestFound = game.count
-                print("\n...{}\n".format([(i+1, j+1, GameState.dir2str(d)) for i, j, d in game.moves]), end="")
+                print("\n...{}\n".format([(i+1, j+1, GameState.dir2str(d)) for i, j, d in game.moves[:44-game.count]]), end="")
 
 
 
