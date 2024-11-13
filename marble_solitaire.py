@@ -142,7 +142,7 @@ class GameState:
     def mst(self):
         """Returns cost of minimum hamming-distance (L1) spanning tree."""
         if self.count <= 1:
-            return 0
+            return 0, 0
 
         marbles = np.transpose(np.nonzero(self.board == 1))
         n = len(marbles)
@@ -154,7 +154,7 @@ class GameState:
 
         # add first edge
         c, i, j = dist.pop(0)
-        cost = c
+        totalCost, lastCost = c, c
         visited[marbles[i][0], marbles[i][1]] = 1
         visited[marbles[j][0], marbles[j][1]] = 1
 
@@ -165,14 +165,15 @@ class GameState:
                 #if (visited[marbles[i][0], marbles[i][1]] == 1) and (visited[marbles[j][0], marbles[j][1]] == 1):
                 #    continue
                 if visited[marbles[i][0], marbles[i][1]] != visited[marbles[j][0], marbles[j][1]]:
-                    cost += c
+                    totalCost += c
+                    lastCost = c
                     visited[marbles[i][0], marbles[i][1]] = 1
                     visited[marbles[j][0], marbles[j][1]] = 1
                     bFound = True
                     break
             assert bFound
 
-        return cost
+        return totalCost, lastCost
 
     def __eq__(self, other):
         if (self.count != other.count):
@@ -244,16 +245,19 @@ def prioritySearch(maxMoves=None):
                         movesSkipped += 1
                     else:
                         seen.add(attempt)
-                        cost = attempt.mst()
+                        totalCost, lastCost = attempt.mst()
 
                         # check solveable heuristic
-                        if cost >= 2 * attempt.count:
+                        if totalCost >= 2 * attempt.count:
+                            movesSkipped += 1
+                        elif lastCost >= 5:
                             movesSkipped += 1
                         else:
                             legalMove = True
-                            #score = cost * cost / attempt.count
-                            #score = 2 * attempt.count - cost
-                            score = attempt.count
+                            #score = totalCost * totalCost / attempt.count
+                            #score = 2 * attempt.count - totalCost
+                            #score = attempt.count
+                            score = 10 * attempt.count + lastCost
                             heapq.heappush(frontier, (score, attempt))
 
         if not legalMove:
