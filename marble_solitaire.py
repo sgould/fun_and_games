@@ -16,13 +16,22 @@ import copy
 import heapq
 import time
 import numpy as np
+import os
 
 class GameState:
     """State of the board."""
 
-    hash_indx = np.array([[0, 0, 0, 65536, 16384, 65536, 0, 0, 0], [0, 0, 0, 2048, 512, 2048, 0, 0, 0], [0, 0, 0, 64, 16, 64, 0, 0, 0],
-                          [65536, 2048, 64, 4, 1, 4, 64, 2048, 65536], [16384, 512, 16, 1, 0, 1, 16, 512, 16384], [65536, 2048, 64, 4, 1, 4, 64, 2048, 65536],
-                          [0, 0, 0, 64, 16, 64, 0, 0, 0], [0, 0, 0, 2048, 512, 2048, 0, 0, 0], [0, 0, 0, 65536, 16384, 65536, 0, 0, 0]], dtype=int)
+    hash_indx = np.array([
+        [0,     0,      0,      65536,  16384,  65536,  0,      0,      0],
+        [0,     0,      0,      2048,   512,    2048,   0,      0,      0],
+        [0,     0,      0,      64,     16,     64,     0,      0,      0],
+        [65536, 2048,   64,     4,      1,      4,      64,     2048,   65536],
+        [16384, 512,    16,     1,      0,      1,      16,     512,    16384],
+        [65536, 2048,   64,     4,      1,      4,      64,     2048,   65536],
+        [0,     0,      0,      64,     16,     64,     0,      0,      0],
+        [0,     0,      0,      2048,   512,    2048,   0,      0,      0],
+        [0,     0,      0,      65536,  16384,  65536,  0,      0,      0]
+    ], dtype=int)
 
     def __init__(self):
         # 2d array representing the board (-1: illegal, 0: empty, 1:marble)
@@ -142,14 +151,16 @@ class GameState:
     def mst(self):
         """Returns cost of minimum hamming-distance (L1) spanning tree."""
         if self.count <= 1:
-            return 0, 0
+            return 0, 0, 0, 0
 
         marbles = np.transpose(np.nonzero(self.board == 1))
         n = len(marbles)
         dist = [(abs(marbles[i][0] - marbles[j][0]) + abs(marbles[i][1] - marbles[j][1]), i, j) for i in range(1,n) for j in range(i)]
         dist.sort(key=lambda x: x[0])
 
-        #diameter = dist[-1][0]
+        diameter = dist[-1][0]
+        area = np.prod(np.max(marbles, axis=0) - np.min(marbles, axis=0) + 1)
+
         visited = np.zeros((9,9))
 
         # add first edge
@@ -173,7 +184,22 @@ class GameState:
                     break
             assert bFound
 
-        return totalCost, lastCost
+        return totalCost, lastCost, diameter, area
+
+    def save(self, fh):
+        """Save state to a given file handle."""
+        np.save(fh, self.board)
+        np.save(fh, self.moves)
+
+    def load(self, fh):
+        """Load state from a given file handle."""
+        self.board = np.load(fh)
+        self.moves = np.load(fh)
+        self.count = np.count_nonzero(self.board == 1)
+
+    def as_c_string(self):
+        """Return board state as a C/TeX string array."""
+        return r"{" + ", ".join([r"{" + ", ".join([str(self.board[i, j]) for j in range(9)]) + r"}" for i in range(9)]) + r"}"
 
     def __eq__(self, other):
         if (self.count != other.count):
@@ -213,27 +239,109 @@ class GameState:
         #return int(sum([pow(2, abs(i - 4) + abs(j - 4)) for i, j in zip(*np.where(self.board == 1))]))
 
 
-def prioritySearch(maxMoves=None):
-    print("started at {}...".format(time.asctime()))
-    bestFound = 45
-    movesEvaluated = 0
-    movesSkipped = 0
-    frontier = []
-    game = GameState()
-    heapq.heappush(frontier, (0, game))
-    seen = set() # insert when added to frontier
-    seen.add(game)
+class SearchState:
+    """State of the search."""
 
-    while (len(frontier)):
-        movesEvaluated += 1
-        score, game = heapq.heappop(frontier)
+    def __init__(self):
+        self.movesEvaluated = 0
+        self.movesSkipped = 0
+        self.frontier = []
+        self.seen = set()
+        self.bestGameFound = None
+
+    def save(self, filename):
+        with open(filename, 'wb') as fh:
+            fh.write((self.movesEvaluated).to_bytes(4, byteorder='big', signed=False))
+            fh.write((self.movesSkipped).to_bytes(4, byteorder='big', signed=False))
+            fh.write((len(self.frontier)).to_bytes(4, byteorder='big', signed=False))
+            for i in range(len(self.frontier)):
+                fh.write((self.frontier[i][0]).to_bytes(4, byteorder='big'))
+                self.frontier[i][1].save(fh)
+
+            fh.write((int(0)).to_bytes(4, byteorder='big', signed=False))
+            #fh.write((len(self.seen)).to_bytes(4, byteorder='big', signed=False))
+            #for game in self.seen:
+            #    game.save(fh)
+            if self.bestGameFound is None:
+                self.bestGameFound = GameState()
+            self.bestGameFound.save(fh)
+
+
+    def load(self, filename):
+        self.__init__()
+        with open(filename, 'rb') as fh:
+            self.movesEvaluated = int.from_bytes(fh.read(4), byteorder='big')
+            self.movesSkipped = int.from_bytes(fh.read(4), byteorder='big')
+            n = int.from_bytes(fh.read(4), byteorder='big')
+            print("...loading {} games into frontier".format(n))
+            for i in range(n):
+                score = int.from_bytes(fh.read(4), byteorder='big')
+                game = GameState()
+                game.load(fh)
+                heapq.heappush(self.frontier, (int(score), game))
+                self.seen.add(game)
+            n = int.from_bytes(fh.read(4), byteorder='big')
+            print("...loading {} games into seen".format(n))
+            for i in range(n):
+                game = GameState()
+                game.load(fh)
+                self.seen.add(game)
+            self.bestGameFound = GameState()
+            self.bestGameFound.load(fh)
+
+
+    def print(self, game=None):
+        """Prints search state."""
+        if game is None:
+            game = self.bestGameFound
+        print("\rtried {} moves, skipped {} moves, {} marbles remaining, {} games in frontier, {}/{} smallest/biggest game in frontier".format(
+                self.movesEvaluated, self.movesSkipped, game.count if game else 45, len(self.frontier),
+            min([g.count for (s, g) in self.frontier]), max([g.count for (s, g) in self.frontier])), end="")
+
+
+def gameMoves2Latex(game):
+    """Prints the history of game moves as a LaTeX array."""
+
+    str = ""
+
+    g = GameState()
+    str += "\t" + g.as_c_string()
+    for i, j, d in game.moves[:44 - game.count]:
+        g = g.move(i, j, d)
+        str += ",\n\t" + g.as_c_string()
+
+    return str
+
+
+def prioritySearch(maxMoves=None, cacheFile=None, cacheEvery=10000):
+    print("started at {}...".format(time.asctime()))
+
+    search = SearchState()
+    if (cacheFile is not None) and os.path.isfile(cacheFile):
+        print("reading search state from {}...".format(cacheFile))
+        search.load(cacheFile)
+        search.print()
+        print("\n...{}\n".format([(i + 1, j + 1, GameState.dir2str(d)) for i, j, d in search.bestGameFound.moves[:44 - search.bestGameFound.count]]), end="")
+    else:
+        game = GameState()
+        heapq.heappush(search.frontier, (0, game))
+        search.seen.add(game)
+        search.bestGameFound = game
+
+    while (len(search.frontier)):
+        search.movesEvaluated += 1
+        score, game = heapq.heappop(search.frontier)
 
         if game.solved():
-            print("\rtried {} moves, skipped {} moves, {} marbles remaining, {} games in frontier".format(movesEvaluated, movesSkipped, game.count, len(frontier)), end="")
+            search.bestGameFound = game
+            search.print()
             print("\n...{}\n".format([(i + 1, j + 1, GameState.dir2str(d)) for i, j, d in game.moves]), end="")
             break
-        if (maxMoves is not None) and (movesEvaluated >= maxMoves):
+        if (maxMoves is not None) and (search.movesEvaluated >= maxMoves):
             break
+
+        if (cacheFile is not None) and (search.movesEvaluated % cacheEvery == 0):
+            search.save(cacheFile)
 
         legalMove = False
         for i, j in zip(*np.nonzero(game.board == 1)):
@@ -241,35 +349,41 @@ def prioritySearch(maxMoves=None):
                 attempt = game.move(i, j, d)
                 if attempt is not None:
                     #legalMove = True
-                    if attempt in seen:
-                        movesSkipped += 1
+                    if attempt in search.seen:
+                        search.movesSkipped += 1
                     else:
-                        seen.add(attempt)
-                        totalCost, lastCost = attempt.mst()
+                        #search.seen.add(attempt)
+                        totalCost, lastCost, diameter, area = attempt.mst()
 
                         # check solveable heuristic
                         if totalCost >= 2 * attempt.count:
-                            movesSkipped += 1
+                            search.movesSkipped += 1
                         elif lastCost >= 5:
-                            movesSkipped += 1
+                            search.movesSkipped += 1
                         else:
                             legalMove = True
                             #score = totalCost * totalCost / attempt.count
                             #score = 2 * attempt.count - totalCost
                             #score = attempt.count
-                            score = 10 * attempt.count + lastCost
-                            heapq.heappush(frontier, (score, attempt))
+                            #score = 10 * attempt.count + lastCost
+                            #score = 100 * attempt.count + area
+                            score = area - attempt.count
+                            heapq.heappush(search.frontier, (int(score), attempt))
+                            search.seen.add(attempt)
 
         if not legalMove:
-            print("\rtried {} moves, skipped {} moves, {} marbles remaining, {} games in frontier".format(movesEvaluated, movesSkipped, game.count, len(frontier)), end="")
-            if game.count < bestFound:
-                bestFound = game.count
+            search.print(game)
+            if game.count < search.bestGameFound.count:
+                search.bestGameFound = game
                 print("\n...{}\n".format([(i+1, j+1, GameState.dir2str(d)) for i, j, d in game.moves[:44-game.count]]), end="")
 
+    return search.bestGameFound
 
 
 if __name__ == "__main__":
-    prioritySearch()
+    #prioritySearch(cacheFile="marbles.cache.bin")
+    game = prioritySearch()
+    print(gameMoves2Latex(game))
     exit(0)
 
     import cProfile, pstats, io
@@ -277,7 +391,7 @@ if __name__ == "__main__":
 
     pr = cProfile.Profile()
     pr.enable()
-    prioritySearch(5000)
+    prioritySearch(50000)
     pr.disable()
     s = io.StringIO()
     sortby = SortKey.CUMULATIVE
