@@ -35,8 +35,10 @@
 		\foreach \y in {1,2,...,9}{
 			\pgfmathsetmacro{\value}{int(#1[9-\y][\x-1])}
 			\pgfmathparse{\value == 0}\ifdim\pgfmathresult pt>0pt\draw[black!50, fill=black!10] (\x, \y) circle (4mm);\fi
-			\pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\shade[ball color=blue!50] (\x, \y) circle (4mm);\fi
-			\pgfmathparse{\value == 2}\ifdim\pgfmathresult pt>0pt\shade[ball color=red!50] (\x, \y) circle (4mm);\fi
+			%\pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\shade[ball color=blue!50] (\x, \y) circle (4mm);\fi
+			%\pgfmathparse{\value == 2}\ifdim\pgfmathresult pt>0pt\shade[ball color=red!50] (\x, \y) circle (4mm);\fi
+			\pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\draw[white!50, fill=black!50] (\x, \y) circle (4mm);\fi
+			\pgfmathparse{\value == 2}\ifdim\pgfmathresult pt>0pt\draw[white!50, fill=red!50] (\x, \y) circle (4mm);\fi
 			\pgfmathparse{\value == 3}\ifdim\pgfmathresult pt>0pt\draw[red!50, fill=black!10] (\x, \y) circle (4mm);\fi
 		}
 	}

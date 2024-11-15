@@ -21,6 +21,7 @@ import numpy as np
 class GameState:
     """State of the board."""
 
+    # hash index used for computing a hash of the game state
     hash_indx = np.array([
         [0,     0,      0,      65536,  16384,  65536,  0,      0,      0],
         [0,     0,      0,      2048,   512,    2048,   0,      0,      0],
@@ -91,7 +92,8 @@ class GameState:
         return (self.count == 1) and (anyPosition or (self.board[4, 4] == 1))
 
     def mst(self):
-        """Returns cost of minimum hamming-distance (L1) spanning tree."""
+        """Returns cost of minimum hamming-distance (L1) spanning tree plus some other metrics like area of
+        the minimum bounding rectangle."""
         if self.count <= 1:
             return 0, 0, 0, 0
 
@@ -111,24 +113,20 @@ class GameState:
         visited[marbles[i][0], marbles[i][1]] = 1
         visited[marbles[j][0], marbles[j][1]] = 1
 
-        # add remaining edges
+        # add remaining edges by Prim's algorithm
         for ni in range(n-2):
-            bFound = False
             for c, i, j in dist:
-                #if (visited[marbles[i][0], marbles[i][1]] == 1) and (visited[marbles[j][0], marbles[j][1]] == 1):
-                #    continue
                 if visited[marbles[i][0], marbles[i][1]] != visited[marbles[j][0], marbles[j][1]]:
                     totalCost += c
                     lastCost = c
                     visited[marbles[i][0], marbles[i][1]] = 1
                     visited[marbles[j][0], marbles[j][1]] = 1
-                    bFound = True
                     break
-            assert bFound
 
         return totalCost, lastCost, diameter, area
 
     def __eq__(self, other):
+        """Equality operator. Checks for rotational and reflection symmetries."""
         if (self.count != other.count):
             return False
         if np.array_equal(self.board, other.board):
@@ -161,6 +159,7 @@ class GameState:
         return "\n".join(["".join(["O" if self.board[i, j] == 1 else "." if self.board[i, j] == 0 else " " for j in range(9)]) for i in range(9)])
 
     def __hash__(self):
+        """Hash function needed for insertion into a set."""
         return int(np.sum(np.where(self.board == 1, GameState.hash_indx, 0)))
 
 
@@ -193,8 +192,8 @@ def gameMoves2Latex(game):
             \foreach \y in {1,2,...,9}{
                 \pgfmathsetmacro{\value}{int(#1[9-\y][\x-1])}
                 \pgfmathparse{\value == 0}\ifdim\pgfmathresult pt>0pt\draw[black!50, fill=black!10] (\x, \y) circle (4mm);\fi
-                \pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\shade[ball color=blue!50] (\x, \y) circle (4mm);\fi
-                \pgfmathparse{\value == 2}\ifdim\pgfmathresult pt>0pt\shade[ball color=red!50] (\x, \y) circle (4mm);\fi
+  			    \pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\draw[white!50, fill=black!50] (\x, \y) circle (4mm);\fi
+			    \pgfmathparse{\value == 2}\ifdim\pgfmathresult pt>0pt\draw[white!50, fill=red!50] (\x, \y) circle (4mm);\fi
                 \pgfmathparse{\value == 3}\ifdim\pgfmathresult pt>0pt\draw[red!50, fill=black!10] (\x, \y) circle (4mm);\fi
             }
         }
@@ -234,18 +233,24 @@ def gameMoves2Latex(game):
 
 
 def prioritySearch(maxMoves=None):
+    """Search for a solution using a priority queue ('frontier') to maintain partial games. Skips any game already
+    added to the queue or previously processed from the queue ('seen')."""
+
     print("started at {}...".format(time.asctime()))
 
+    # initialize the search state
     search = SearchState()
     game = GameState()
     heapq.heappush(search.frontier, (0, game))
     search.seen.add(game)
     search.bestGameFound = game
 
+    # keep processing partial games in the queue
     while (len(search.frontier)):
         search.movesEvaluated += 1
         score, game = heapq.heappop(search.frontier)
 
+        # check if the game is solved or maximum number of moves has been reached
         if game.solved(False):
             search.bestGameFound = game
             search.print()
@@ -254,14 +259,17 @@ def prioritySearch(maxMoves=None):
         if (maxMoves is not None) and (search.movesEvaluated >= maxMoves):
             break
 
+        # look for legal moves from the current game
         legalMove = False
         for i, j in zip(*np.nonzero(game.board == 1)):
             for d in range(4):
+                # try making a move
                 attempt = game.move(i, j, d)
                 if attempt is not None:
                     if attempt in search.seen:
                         search.movesSkipped += 1
                     else:
+                        # calculate metrics on successful move
                         totalCost, lastCost, diameter, area = attempt.mst()
 
                         # check solveable heuristics
@@ -270,13 +278,14 @@ def prioritySearch(maxMoves=None):
                         elif lastCost >= 5:
                             search.movesSkipped += 1
                         else:
+                            # add game with attempted move to the queue for future processing, score based on the
+                            # empty space in the minimum rectangle containing all the marbles remaining
                             legalMove = True
-                            #score = attempt.count
-                            #score = 10 * attempt.count + lastCost
                             score = area - attempt.count
                             heapq.heappush(search.frontier, (int(score), attempt))
                             search.seen.add(attempt)
 
+        # if a legal move could not be made print some progress statistics and updated the best game found so far
         if not legalMove:
             search.print(game)
             if game.count < search.bestGameFound.count:
