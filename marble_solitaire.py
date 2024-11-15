@@ -16,7 +16,7 @@ import copy
 import heapq
 import time
 import numpy as np
-import os
+
 
 class GameState:
     """State of the board."""
@@ -49,6 +49,15 @@ class GameState:
         elif d == 3: return "left"
         return None
 
+    @staticmethod
+    def dir2delta(d):
+        """Convert direction to di and dj."""
+        if   d == 0: return 1, 0
+        elif d == 1: return 0, 1
+        elif d == 2: return -1, 0
+        elif d == 3: return 0, -1
+        return None
+
     def move(self, i, j, d):
         """Execute a jump from (i,j) in direction d. Returns new GameState if successful. Otherwise None."""
         #assert (0 <= i < 9) and (0 <= j < 9) and (0 <= d < 4)
@@ -57,34 +66,15 @@ class GameState:
         if self.board[i, j] != 1:
             return None
 
-        if d == 0:
-            if (i >= 7): return None
-            if (self.board[i + 1, j] != 1): return None
-            if (self.board[i + 2, j] != 0): return None
-            di, dj = 1, 0
-        elif d == 1:
-            if (j >= 7): return None
-            if (self.board[i, j + 1] != 1): return None
-            if (self.board[i, j + 2] != 0): return None
-            di, dj = 0, 1
-        elif d == 2:
-            if (i < 2): return None
-            if (self.board[i - 1, j] != 1): return None
-            if (self.board[i - 2, j] != 0): return None
-            di, dj = -1, 0
-        else:
-            if (self.board[i, j - 1] != 1): return None
-            if (self.board[i, j - 2] != 0): return None
-            if (j < 2): return None
-            di, dj = 0, -1
+        di, dj = GameState.dir2delta(d)
 
         # check move stays within board
-        #if not (0 <= i + 2 * di < 9) or not (0 <= j + 2 * dj < 9):
-        #    assert None
+        if not (0 <= i + 2 * di < 9) or not (0 <= j + 2 * dj < 9):
+            return None
 
         # check that there exists a marble to jump and that the destination is empty
-        #if (self.board[i + di, j + dj] != 1) or (self.board[i + 2 * di, j + 2 * dj] != 0):
-        #   return None
+        if (self.board[i + di, j + dj] != 1) or (self.board[i + 2 * di, j + 2 * dj] != 0):
+           return None
 
         # make the move
         state = copy.deepcopy(self)
@@ -93,54 +83,6 @@ class GameState:
         state.board[i + 2 * di, j + 2 * dj] = 1
         state.count = self.count - 1
         state.moves[44 - self.count] = (i, j, d)
-
-        return state
-
-    def unmove(self, i, j, d):
-        """Undo a from jump (i,j) in direction d. Useful for building an endgame book.
-        Returns new GameState if successful else None."""
-        #assert (0 <= i < 9) and (0 <= j < 9) and (0 <= d < 4)
-
-        # check that position is empty (i.e., used to contain a marble)
-        if self.board[i, j] != 0:
-            return None
-
-        if d == 0:
-            if (i >= 7): return None
-            if (self.board[i + 1, j] != 0): return None
-            if (self.board[i + 2, j] != 1): return None
-            di, dj = 1, 0
-        elif d == 1:
-            if (j >= 7): return None
-            if (self.board[i, j + 1] != 0): return None
-            if (self.board[i, j + 2] != 1): return None
-            di, dj = 0, 1
-        elif d == 2:
-            if (i < 2): return None
-            if (self.board[i - 1, j] != 0): return None
-            if (self.board[i - 2, j] != 1): return None
-            di, dj = -1, 0
-        else:
-            if (self.board[i, j - 1] != 0): return None
-            if (self.board[i, j - 2] != 1): return None
-            if (j < 2): return None
-            di, dj = 0, -1
-
-        # check move stays within board
-        #if not (0 <= i + 2 * di < 9) or not (0 <= j + 2 * dj < 9):
-        #    assert None
-
-        # check that there exists an empty space to jump and that the destination has a marble
-        #if (self.board[i + di, j + dj] != 0) or (self.board[i + 2 * di, j + 2 * dj] != 1):
-        #   return None
-
-        # make the move
-        state = copy.deepcopy(self)
-        state.board[i, j] = 1
-        state.board[i + di, j + dj] = 1
-        state.board[i + 2 * di, j + 2 * dj] = 0
-        state.count = self.count + 1
-        state.moves[self.count - 1] = (i, j, d)
 
         return state
 
@@ -186,17 +128,6 @@ class GameState:
 
         return totalCost, lastCost, diameter, area
 
-    def save(self, fh):
-        """Save state to a given file handle."""
-        np.save(fh, self.board)
-        np.save(fh, self.moves)
-
-    def load(self, fh):
-        """Load state from a given file handle."""
-        self.board = np.load(fh)
-        self.moves = np.load(fh)
-        self.count = np.count_nonzero(self.board == 1)
-
     def __eq__(self, other):
         if (self.count != other.count):
             return False
@@ -231,8 +162,6 @@ class GameState:
 
     def __hash__(self):
         return int(np.sum(np.where(self.board == 1, GameState.hash_indx, 0)))
-        #return int(sum([pow((i - 4) * (i - 4) + (j - 4) * (j - 4), 2) for i, j in zip(*np.nonzero(self.board == 1))]))
-        #return int(sum([pow(2, abs(i - 4) + abs(j - 4)) for i, j in zip(*np.where(self.board == 1))]))
 
 
 class SearchState:
@@ -245,47 +174,6 @@ class SearchState:
         self.seen = set()
         self.bestGameFound = None
 
-    def save(self, filename):
-        with open(filename, 'wb') as fh:
-            fh.write((self.movesEvaluated).to_bytes(4, byteorder='big', signed=False))
-            fh.write((self.movesSkipped).to_bytes(4, byteorder='big', signed=False))
-            fh.write((len(self.frontier)).to_bytes(4, byteorder='big', signed=False))
-            for i in range(len(self.frontier)):
-                fh.write((self.frontier[i][0]).to_bytes(4, byteorder='big'))
-                self.frontier[i][1].save(fh)
-
-            fh.write((int(0)).to_bytes(4, byteorder='big', signed=False))
-            #fh.write((len(self.seen)).to_bytes(4, byteorder='big', signed=False))
-            #for game in self.seen:
-            #    game.save(fh)
-            if self.bestGameFound is None:
-                self.bestGameFound = GameState()
-            self.bestGameFound.save(fh)
-
-
-    def load(self, filename):
-        self.__init__()
-        with open(filename, 'rb') as fh:
-            self.movesEvaluated = int.from_bytes(fh.read(4), byteorder='big')
-            self.movesSkipped = int.from_bytes(fh.read(4), byteorder='big')
-            n = int.from_bytes(fh.read(4), byteorder='big')
-            print("...loading {} games into frontier".format(n))
-            for i in range(n):
-                score = int.from_bytes(fh.read(4), byteorder='big')
-                game = GameState()
-                game.load(fh)
-                heapq.heappush(self.frontier, (int(score), game))
-                self.seen.add(game)
-            n = int.from_bytes(fh.read(4), byteorder='big')
-            print("...loading {} games into seen".format(n))
-            for i in range(n):
-                game = GameState()
-                game.load(fh)
-                self.seen.add(game)
-            self.bestGameFound = GameState()
-            self.bestGameFound.load(fh)
-
-
     def print(self, game=None):
         """Prints search state."""
         if game is None:
@@ -296,15 +184,33 @@ class SearchState:
 
 
 def gameMoves2Latex(game):
-    """Prints the history of game moves as a LaTeX array."""
+    """Prints the history of game moves as LaTeX/TikZ source."""
 
-    out_str = ""
+    out_str = r"""
+    \newcommand{\drawboard}[1]{ % 2d board array (-1: illegal, 0: empty, 1: occupied, 2: src, 3: dst)
+        \draw[black, thick, fill=black!10] (5, 5) circle (5cm);
+        \foreach \x in {1,2,...,9}{
+            \foreach \y in {1,2,...,9}{
+                \pgfmathsetmacro{\value}{int(#1[9-\y][\x-1])}
+                \pgfmathparse{\value == 0}\ifdim\pgfmathresult pt>0pt\draw[black!50, fill=black!10] (\x, \y) circle (4mm);\fi
+                \pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\shade[ball color=blue!50] (\x, \y) circle (4mm);\fi
+                \pgfmathparse{\value == 2}\ifdim\pgfmathresult pt>0pt\shade[ball color=red!50] (\x, \y) circle (4mm);\fi
+                \pgfmathparse{\value == 3}\ifdim\pgfmathresult pt>0pt\draw[red!50, fill=black!10] (\x, \y) circle (4mm);\fi
+            }
+        }
+    }
+    
+    \begin{center}
+	    \begin{tikzpicture}[scale=0.25]
+    """
 
     g = GameState()
     count = 0
     for i, j, d in game.moves[:44 - game.count]:
         board = copy.deepcopy(g.board)
         board[i, j] = 2
+        di, dj = GameState.dir2delta(d)
+        board[i + 2*di, j + 2*dj] = 3
         board_string = r"{" + ", ".join([r"{" + ", ".join([str(board[i, j]) for j in range(9)]) + r"}" for i in range(9)]) + r"}"
 
         out_str += "\t\\begin{{scope}}[xshift={}cm, yshift={}cm]\n".format(12*(count % 6), -12 * int(count / 6))
@@ -317,25 +223,24 @@ def gameMoves2Latex(game):
     board_string = r"{" + ", ".join([r"{" + ", ".join([str(g.board[i, j]) for j in range(9)]) + r"}" for i in range(9)]) + r"}"
     out_str += "\t\\begin{{scope}}[xshift={}cm, yshift={}cm]\n".format(12 * (count % 6), -12 * int(count / 6))
     out_str += "\t\t\\drawboard{" + board_string + "};\n"
-    out_str += "\t\\end{scope}\n"
+    out_str += "\t\\end{scope}"
+
+    out_str += r"""
+        \end{tikzpicture}
+    \end{center}
+    """
 
     return out_str
 
 
-def prioritySearch(maxMoves=None, cacheFile=None, cacheEvery=10000):
+def prioritySearch(maxMoves=None):
     print("started at {}...".format(time.asctime()))
 
     search = SearchState()
-    if (cacheFile is not None) and os.path.isfile(cacheFile):
-        print("reading search state from {}...".format(cacheFile))
-        search.load(cacheFile)
-        search.print()
-        print("\n...{}\n".format([(i + 1, j + 1, GameState.dir2str(d)) for i, j, d in search.bestGameFound.moves[:44 - search.bestGameFound.count]]), end="")
-    else:
-        game = GameState()
-        heapq.heappush(search.frontier, (0, game))
-        search.seen.add(game)
-        search.bestGameFound = game
+    game = GameState()
+    heapq.heappush(search.frontier, (0, game))
+    search.seen.add(game)
+    search.bestGameFound = game
 
     while (len(search.frontier)):
         search.movesEvaluated += 1
@@ -349,33 +254,25 @@ def prioritySearch(maxMoves=None, cacheFile=None, cacheEvery=10000):
         if (maxMoves is not None) and (search.movesEvaluated >= maxMoves):
             break
 
-        if (cacheFile is not None) and (search.movesEvaluated % cacheEvery == 0):
-            search.save(cacheFile)
-
         legalMove = False
         for i, j in zip(*np.nonzero(game.board == 1)):
             for d in range(4):
                 attempt = game.move(i, j, d)
                 if attempt is not None:
-                    #legalMove = True
                     if attempt in search.seen:
                         search.movesSkipped += 1
                     else:
-                        #search.seen.add(attempt)
                         totalCost, lastCost, diameter, area = attempt.mst()
 
-                        # check solveable heuristic
+                        # check solveable heuristics
                         if totalCost >= 2 * attempt.count:
                             search.movesSkipped += 1
                         elif lastCost >= 5:
                             search.movesSkipped += 1
                         else:
                             legalMove = True
-                            #score = totalCost * totalCost / attempt.count
-                            #score = 2 * attempt.count - totalCost
                             #score = attempt.count
                             #score = 10 * attempt.count + lastCost
-                            #score = 100 * attempt.count + area
                             score = area - attempt.count
                             heapq.heappush(search.frontier, (int(score), attempt))
                             search.seen.add(attempt)
@@ -390,20 +287,6 @@ def prioritySearch(maxMoves=None, cacheFile=None, cacheEvery=10000):
 
 
 if __name__ == "__main__":
-    #prioritySearch(cacheFile="marbles.cache.bin")
     game = prioritySearch()
     print(gameMoves2Latex(game))
-    exit(0)
 
-    import cProfile, pstats, io
-    from pstats import SortKey
-
-    pr = cProfile.Profile()
-    pr.enable()
-    prioritySearch(50000)
-    pr.disable()
-    s = io.StringIO()
-    sortby = SortKey.CUMULATIVE
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
