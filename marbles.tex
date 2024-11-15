@@ -30,7 +30,7 @@
 \vfill
 
 \newcommand{\drawboard}[1]{ % 2d board array (-1: illegal, 0: empty, 1: occupied, 2: src, 3: dst)
-	\draw[black, thick, fill=black!10] (5, 5) circle (5cm);
+	\draw[black!30, fill=black!10] (5, 5) circle (5cm);
 	\foreach \x in {1,2,...,9}{
 		\foreach \y in {1,2,...,9}{
 			\pgfmathsetmacro{\value}{int(#1[9-\y][\x-1])}
