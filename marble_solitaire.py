@@ -197,10 +197,6 @@ class GameState:
         self.moves = np.load(fh)
         self.count = np.count_nonzero(self.board == 1)
 
-    def as_c_string(self):
-        """Return board state as a C/TeX string array."""
-        return r"{" + ", ".join([r"{" + ", ".join([str(self.board[i, j]) for j in range(9)]) + r"}" for i in range(9)]) + r"}"
-
     def __eq__(self, other):
         if (self.count != other.count):
             return False
@@ -302,15 +298,28 @@ class SearchState:
 def gameMoves2Latex(game):
     """Prints the history of game moves as a LaTeX array."""
 
-    str = ""
+    out_str = ""
 
     g = GameState()
-    str += "\t" + g.as_c_string()
+    count = 0
     for i, j, d in game.moves[:44 - game.count]:
-        g = g.move(i, j, d)
-        str += ",\n\t" + g.as_c_string()
+        board = copy.deepcopy(g.board)
+        board[i, j] = 2
+        board_string = r"{" + ", ".join([r"{" + ", ".join([str(board[i, j]) for j in range(9)]) + r"}" for i in range(9)]) + r"}"
 
-    return str
+        out_str += "\t\\begin{{scope}}[xshift={}cm, yshift={}cm]\n".format(12*(count % 6), -12 * int(count / 6))
+        out_str += "\t\t\\drawboard{" + board_string + "};\n"
+        out_str += "\t\\end{scope}\n"
+
+        g = g.move(i, j, d)
+        count += 1
+
+    board_string = r"{" + ", ".join([r"{" + ", ".join([str(g.board[i, j]) for j in range(9)]) + r"}" for i in range(9)]) + r"}"
+    out_str += "\t\\begin{{scope}}[xshift={}cm, yshift={}cm]\n".format(12 * (count % 6), -12 * int(count / 6))
+    out_str += "\t\t\\drawboard{" + board_string + "};\n"
+    out_str += "\t\\end{scope}\n"
+
+    return out_str
 
 
 def prioritySearch(maxMoves=None, cacheFile=None, cacheEvery=10000):
@@ -332,7 +341,7 @@ def prioritySearch(maxMoves=None, cacheFile=None, cacheEvery=10000):
         search.movesEvaluated += 1
         score, game = heapq.heappop(search.frontier)
 
-        if game.solved():
+        if game.solved(False):
             search.bestGameFound = game
             search.print()
             print("\n...{}\n".format([(i + 1, j + 1, GameState.dir2str(d)) for i, j, d in game.moves]), end="")
