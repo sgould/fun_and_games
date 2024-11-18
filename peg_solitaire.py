@@ -1,4 +1,4 @@
-# 9x9 PEG SOLITAIRE
+# 9x9 (45-HOLE) PEG SOLITAIRE
 # Stephen Gould
 #
 #                   (0,3) (0,4) (0,5)
@@ -74,9 +74,13 @@ class GameState:
         self.moves = np.empty((self.init_count, 3), dtype=np.int8)
 
     @staticmethod
-    def empty():
-        """Returns an empty board."""
-        return np.array([[-1 if ((i < 3) or (i > 5)) and ((j < 3) or (j > 5)) else 0 for j in range(9)] for i in range(9)], dtype=np.int8)
+    def fill(value = 0, n = 45):
+        """Returns a board filled with 'value' for n-hole game ('n' can be 33 or 45)."""
+        assert (n == 33) or (n == 45)
+        board = np.array([[-1 if ((i < 3) or (i > 5)) and ((j < 3) or (j > 5)) else value for j in range(9)] for i in range(9)], dtype=np.int8)
+        if n == 33:
+            board[0, :] = board[8, :] = board[:, 0] = board[:, 8] = -1
+        return board
 
     @staticmethod
     def dir2str(d):
@@ -143,6 +147,7 @@ class GameState:
 
     def is_impossible(self):
         """Returns True if impossible to solve and False if maybe possible to solve."""
+        # TODO: implement phase relations check (Beasley, p. 56)
         board_counts = GameState.count_classes(self.board)
         return np.any(board_counts < GameState.count_classes(self.goal)) and \
             (not self.allow_symmetric or np.any(board_counts < GameState.count_classes(self.goal.T)))
@@ -222,17 +227,17 @@ class SearchState:
                 time.asctime(), self.movesEvaluated, self.movesSkipped, game.count if game else 45, game.iou(), len(self.frontier), min_game, max_game), end="")
 
 
-def gameMoves2Latex(game):
-    """Prints the history of game moves as LaTeX/TikZ source."""
+def getLaTeXHeader():
+    """Returns header for LaTeX/TikZ source."""
 
-    out_str = r"""\documentclass[10pt,a4paper]{article}        
-        \usepackage{pgfplots}
-        \pgfplotsset{compat=1.5}
-        \usepackage{tikz, tikzscale, ifthen}
-        
-        \usepackage[cm]{fullpage}
-        
-        \begin{document}
+    return r"""\documentclass[10pt,a4paper]{article}        
+    \usepackage{pgfplots}
+    \pgfplotsset{compat=1.5}
+    \usepackage{tikz, tikzscale, ifthen}
+
+    \usepackage[cm]{fullpage}
+
+    \begin{document}
         \thispagestyle{empty}
 
         \newcommand{\drawboard}[1]{ % 2d board array (-1: illegal, 0: empty, 1: occupied, 2: src, 3: dst)
@@ -247,13 +252,23 @@ def gameMoves2Latex(game):
                 }
             }
         }
-        
+    """
+
+def getLaTeXFooter():
+    """Returns footer for LaTeX/TikZ source."""
+    return r"\end{document}"
+
+
+def getLaTeXGame(game):
+    """Returns the history of game moves as LaTeX/TikZ source."""
+
+    out_str = r"""
         \vspace*{\fill}
         \begin{center}
             \begin{tikzpicture}[scale=0.25]
     """
 
-    g = GameState(init_state = game.init_state)
+    g = GameState(init_state = game.init_state, goal_state=game.goal)
     count = 0
     for i, j, d in game.moves[:game.init_count - game.count]:
         board = copy.deepcopy(g.board)
@@ -278,7 +293,6 @@ def gameMoves2Latex(game):
             \end{tikzpicture}
         \end{center}
         \vspace*{\fill}    
-    \end{document}
     """
 
     return out_str
@@ -340,19 +354,27 @@ def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
 
 if __name__ == "__main__":
 
-    start = None
-    goal = GameState.empty()
-    goal[5,4] = 1
-    goal[4,4] = 1
-    goal[4,5] = 1
-    goal[4,3] = 1
-    goal[3,4] = 1
-
-    game = prioritySearch(init_state=start, goal_state=goal)
-
     filename = "pegs.tex"
     if filename is not None:
         print("...writing LaTeX to {}".format(filename))
         with open(filename, 'wt') as file:
-            file.write(gameMoves2Latex(game))
+            file.write(getLaTeXHeader())
+
+            # solve 45-hole game
+            game = prioritySearch()
+            file.write("\n\t" + r"\begin{center} {\Huge 45-Hole Peg Solitaire} \end{center}" + "\n")
+            file.write(getLaTeXGame(game))
+            file.write("\n" + r"\newpage" + "\n")
+
+            # solve 33-hole game
+            start = GameState.fill(1, 33)
+            start[4, 4] = 0
+
+            goal = np.where(start == -1, -1, 0)
+            goal[4, 4] = 1
+
+            game = prioritySearch(init_state=start, goal_state=goal)
+            file.write("\n\t" + r"\begin{center} {\Huge 33-Hole Peg Solitaire} \end{center}" + "\n")
+            file.write(getLaTeXGame(game))
+            file.write(getLaTeXFooter())
 
