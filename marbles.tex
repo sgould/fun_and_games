@@ -3,13 +3,10 @@
 %%
 
 \documentclass[10pt,a4paper]{article}
-\usepackage{amssymb,amsmath,amsthm,latexsym}
 
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.5}
-\usepackage{tikz, ifthen}
-\usetikzlibrary{arrows.meta, positioning}
-\usepackage{tikzscale}
+\usepackage{tikz, tikzscale, ifthen}
 
 \usepackage[cm]{fullpage}
 
@@ -27,7 +24,6 @@
 	\smallskip
 	{\large Stephen and Hana Gould}
 \end{center}
-\vfill
 
 \newcommand{\drawboard}[1]{ % 2d board array (-1: illegal, 0: empty, 1: occupied, 2: src, 3: dst)
 	\draw[black!30, fill=black!10] (5, 5) circle (5cm);
@@ -44,6 +40,7 @@
 	}
 }
 
+\vfill
 \begin{center}
 	\begin{tikzpicture}[scale=0.25]
 		\begin{scope}[xshift=0cm, yshift=0cm]
@@ -180,5 +177,6 @@
 		\end{scope}
 	\end{tikzpicture}
 \end{center}
+\vfill
 
 \end{document}

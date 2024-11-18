@@ -45,10 +45,11 @@ class GameState:
         """
 
         if init_state is None:
-            self.board = np.array([[-1 if ((i < 3) or (i > 5)) and ((j < 3) or (j > 5)) else 1 for j in range(9)] for i in range(9)], dtype=np.int8)
-            self.board[4, 4] = 0
+            self.init_state = np.array([[-1 if ((i < 3) or (i > 5)) and ((j < 3) or (j > 5)) else 1 for j in range(9)] for i in range(9)], dtype=np.int8)
+            self.init_state[4, 4] = 0
         else:
-            self.board = init_state
+            self.init_state = init_state
+        self.board = np.copy(self.init_state)
 
         if goal_state is None:
             self.goal = np.array([[-1 if ((i < 3) or (i > 5)) and ((j < 3) or (j > 5)) else 0 for j in range(9)] for i in range(9)], dtype=np.int8)
@@ -70,7 +71,7 @@ class GameState:
         assert self.count >= self.goal_count
 
         self.allow_symmetric = allow_symmetric
-        self.moves = np.empty((self.init_count - self.goal_count, 3), dtype=np.int8)
+        self.moves = np.empty((self.init_count, 3), dtype=np.int8)
 
     @staticmethod
     def empty():
@@ -196,7 +197,6 @@ class GameState:
     def __hash__(self):
         """Hash function needed for insertion into a set."""
         return int(np.sum(np.where(self.board == 1, GameState.hash_indx, 0)))
-        #return int(np.dot(GameState.count_classes(self.board), np.array([1, 12, 144, 144])))
 
 
 class SearchState:
@@ -213,33 +213,47 @@ class SearchState:
         """Prints search state."""
         if game is None:
             game = self.bestGameFound
-        print("\rtried {} moves, skipped {} moves, {} marbles remaining, {:0.3f} IoU, {} games in frontier, {}/{} smallest/biggest game in frontier".format(
-                self.movesEvaluated, self.movesSkipped, game.count if game else 45, game.iou(), len(self.frontier),
-            min([g.count for (s, g) in self.frontier]), max([g.count for (s, g) in self.frontier])), end="")
+        if self.frontier:
+            min_game = min([g.count for (s, g) in self.frontier])
+            max_game = max([g.count for (s, g) in self.frontier])
+        else:
+            min_game, max_game = 0, 0
+        print("\rat {}, tried {} moves, skipped {} moves, {} marbles remaining, {:0.3f} IoU, {} games in frontier, {}/{} smallest/biggest game in frontier".format(
+                time.asctime(), self.movesEvaluated, self.movesSkipped, game.count if game else 45, game.iou(), len(self.frontier), min_game, max_game), end="")
 
 
 def gameMoves2Latex(game):
     """Prints the history of game moves as LaTeX/TikZ source."""
 
-    out_str = r"""
-    \newcommand{\drawboard}[1]{ % 2d board array (-1: illegal, 0: empty, 1: occupied, 2: src, 3: dst)
-        \draw[black!30, fill=black!10] (5, 5) circle (5cm);
-        \foreach \x in {1,2,...,9}{
-            \foreach \y in {1,2,...,9}{
-                \pgfmathsetmacro{\value}{int(#1[9-\y][\x-1])}
-                \pgfmathparse{\value == 0}\ifdim\pgfmathresult pt>0pt\draw[black!50, fill=black!10] (\x, \y) circle (4mm);\fi
-  			    \pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\draw[white!50, fill=black!50] (\x, \y) circle (4mm);\fi
-			    \pgfmathparse{\value == 2}\ifdim\pgfmathresult pt>0pt\draw[white!50, fill=red!50] (\x, \y) circle (4mm);\fi
-                \pgfmathparse{\value == 3}\ifdim\pgfmathresult pt>0pt\draw[red!50, fill=black!10] (\x, \y) circle (4mm);\fi
+    out_str = r"""\documentclass[10pt,a4paper]{article}        
+        \usepackage{pgfplots}
+        \pgfplotsset{compat=1.5}
+        \usepackage{tikz, tikzscale, ifthen}
+        
+        \usepackage[cm]{fullpage}
+        
+        \begin{document}
+        \thispagestyle{empty}
+
+        \newcommand{\drawboard}[1]{ % 2d board array (-1: illegal, 0: empty, 1: occupied, 2: src, 3: dst)
+            \draw[black!30, fill=black!10] (5, 5) circle (5cm);
+            \foreach \x in {1,2,...,9}{
+                \foreach \y in {1,2,...,9}{
+                    \pgfmathsetmacro{\value}{int(#1[9-\y][\x-1])}
+                    \pgfmathparse{\value == 0}\ifdim\pgfmathresult pt>0pt\draw[black!50, fill=black!10] (\x, \y) circle (4mm);\fi
+                    \pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\draw[white!50, fill=black!50] (\x, \y) circle (4mm);\fi
+                    \pgfmathparse{\value == 2}\ifdim\pgfmathresult pt>0pt\draw[white!50, fill=red!50] (\x, \y) circle (4mm);\fi
+                    \pgfmathparse{\value == 3}\ifdim\pgfmathresult pt>0pt\draw[red!50, fill=black!10] (\x, \y) circle (4mm);\fi
+                }
             }
         }
-    }
-    
-    \begin{center}
-	    \begin{tikzpicture}[scale=0.25]
+        
+        \vspace*{\fill}
+        \begin{center}
+            \begin{tikzpicture}[scale=0.25]
     """
 
-    g = GameState()
+    g = GameState(init_state = game.init_state)
     count = 0
     for i, j, d in game.moves[:game.init_count - game.count]:
         board = copy.deepcopy(g.board)
@@ -261,14 +275,16 @@ def gameMoves2Latex(game):
     out_str += "\t\\end{scope}"
 
     out_str += r"""
-        \end{tikzpicture}
-    \end{center}
+            \end{tikzpicture}
+        \end{center}
+        \vspace*{\fill}    
+    \end{document}
     """
 
     return out_str
 
 
-def prioritySearch(maxMoves=None):
+def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
     """Search for a solution using a priority queue ('frontier') to maintain partial games. Skips any game already
     added to the queue or previously processed from the queue ('seen')."""
 
@@ -276,7 +292,7 @@ def prioritySearch(maxMoves=None):
 
     # initialize the search state
     search = SearchState()
-    game = GameState(allow_symmetric=True)
+    game = GameState(init_state, goal_state)
     heapq.heappush(search.frontier, (0, game))
     search.seen.add(game)
     search.bestGameFound = game
@@ -324,14 +340,19 @@ def prioritySearch(maxMoves=None):
 
 if __name__ == "__main__":
 
-    if False:
-        game = GameState()
-        print(GameState.count_classes(game.board))
-        print(GameState.count_classes(game.goal))
-        print(game.is_solved())
-        print(game.is_impossible())
-        exit(0)
+    start = None
+    goal = GameState.empty()
+    goal[5,4] = 1
+    goal[4,4] = 1
+    goal[4,5] = 1
+    goal[4,3] = 1
+    goal[3,4] = 1
 
-    game = prioritySearch()
-    #print(gameMoves2Latex(game))
+    game = prioritySearch(init_state=start, goal_state=goal)
+
+    filename = "pegs.tex"
+    if filename is not None:
+        print("...writing LaTeX to {}".format(filename))
+        with open(filename, 'wt') as file:
+            file.write(gameMoves2Latex(game))
 
