@@ -113,6 +113,21 @@ class GameState:
 
         return np.array([m, c, s, t], dtype=np.int8)
 
+    @staticmethod
+    def phase_relations(board):
+        """Returns phase relations for pegs along three north-east diagonals and three south-east diagonals. See
+        Beasley, The Ins and Outs of Peg Solitaire, Chapter 4."""
+
+        pegs = np.nonzero(board == 1)
+        ne_indx = np.mod(pegs[0] + pegs[1], 3)
+        se_indx = np.mod(9 + pegs[0] - pegs[1], 3)
+        parity = np.empty((6,), dtype=np.int8)
+        for i in range(3):
+            parity[i] = np.count_nonzero(ne_indx == i)
+            parity[3+i] = np.count_nonzero(se_indx == i)
+
+        return np.mod(parity, 2) == len(pegs[0]) % 2
+
     def move(self, i, j, d):
         """Execute a jump from (i,j) in direction d. Returns new GameState if successful and None otherwise."""
         #assert (0 <= i < 9) and (0 <= j < 9) and (0 <= d < 4)
@@ -147,10 +162,14 @@ class GameState:
 
     def is_impossible(self):
         """Returns True if impossible to solve and False if maybe possible to solve."""
-        # TODO: implement phase relations check (Beasley, p. 56)
+        # check class counts
         board_counts = GameState.count_classes(self.board)
-        return np.any(board_counts < GameState.count_classes(self.goal)) and \
-            (not self.allow_symmetric or np.any(board_counts < GameState.count_classes(self.goal.T)))
+        if np.any(board_counts < GameState.count_classes(self.goal)) and \
+            (not self.allow_symmetric or np.any(board_counts < GameState.count_classes(self.goal.T))):
+            return True
+
+        # check phase relations (Beasley, pp. 54--56)
+        return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
 
     def iou(self):
         """Returns the intersection over union of the board state and the goal state."""
@@ -234,29 +253,65 @@ def getLaTeXHeader():
     \usepackage{pgfplots}
     \pgfplotsset{compat=1.5}
     \usepackage{tikz, tikzscale, ifthen}
+    \usetikzlibrary{arrows.meta}
 
     \usepackage[cm]{fullpage}
-
+	\pagenumbering{gobble}
+	
     \begin{document}
-        \thispagestyle{empty}
 
         \newcommand{\drawboard}[1]{ % 2d board array (-1: illegal, 0: empty, 1: occupied, 2: src, 3: dst)
-            \draw[black!30, fill=black!10] (5, 5) circle (5cm);
+            \draw[thin, black!30, fill=black!10] (5, 5) circle (5cm);
             \foreach \x in {1,2,...,9}{
                 \foreach \y in {1,2,...,9}{
                     \pgfmathsetmacro{\value}{int(#1[9-\y][\x-1])}
-                    \pgfmathparse{\value == 0}\ifdim\pgfmathresult pt>0pt\draw[black!50, fill=black!10] (\x, \y) circle (4mm);\fi
-                    \pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\draw[white!50, fill=black!50] (\x, \y) circle (4mm);\fi
-                    \pgfmathparse{\value == 2}\ifdim\pgfmathresult pt>0pt\draw[white!50, fill=red!50] (\x, \y) circle (4mm);\fi
-                    \pgfmathparse{\value == 3}\ifdim\pgfmathresult pt>0pt\draw[red!50, fill=black!10] (\x, \y) circle (4mm);\fi
+                    \pgfmathparse{\value == 0}\ifdim\pgfmathresult pt>0pt\draw[thin, black!50, fill=black!10] (\x, \y) circle (3.5mm);\fi
+                    \pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\draw[thin, black!50, fill=black!50] (\x, \y) circle (3.5mm);\fi
+                    \pgfmathparse{\value == 2}\ifdim\pgfmathresult pt>0pt\draw[thin, red!50, fill=red!50] (\x, \y) circle (3.5mm);\fi
+                    \pgfmathparse{\value == 3}\ifdim\pgfmathresult pt>0pt\draw[thin, red!50, fill=black!10] (\x, \y) circle (3.5mm);\fi
                 }
             }
         }
+        
+        \newcommand{\drawlogoboard}[1]{ % 2d board array (-1: illegal, 0: empty, 1: occupied, 2: src, 3: dst)
+			\draw[ultra thin, black] (5, 5) circle (5cm);
+			\foreach \x in {1,2,...,9}{
+				\foreach \y in {1,2,...,9}{
+					\pgfmathsetmacro{\value}{int(#1[9-\y][\x-1])}
+					\pgfmathparse{\value == 0}\ifdim\pgfmathresult pt>0pt\draw[ultra thin, black, fill=white] (\x, \y) circle (3.5mm);\fi
+					\pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\draw[ultra thin, black, fill=black] (\x, \y) circle (3.5mm);\fi
+					\pgfmathparse{\value == 2}\ifdim\pgfmathresult pt>0pt\draw[ultra thin, black, fill=black] (\x, \y) circle (3.5mm);\fi
+					\pgfmathparse{\value == 3}\ifdim\pgfmathresult pt>0pt\draw[ultra thin, black, fill=white] (\x, \y) circle (3.5mm);\fi
+				}
+			}
+		}
     """
 
 def getLaTeXFooter():
     """Returns footer for LaTeX/TikZ source."""
     return r"\end{document}"
+
+def getLaTeXLogo(start, goal):
+    """Returns LaTeX/TikZ source for logo of start and goal states."""
+
+    init_str = r"{" + ", ".join([r"{" + ", ".join([str(start[i, j]) for j in range(9)]) + r"}" for i in range(9)]) + r"}"
+    goal_str = r"{" + ", ".join([r"{" + ", ".join([str(goal[i, j]) for j in range(9)]) + r"}" for i in range(9)]) + r"}"
+
+    return r"""
+        \AddToHookNext{shipout/foreground}{%
+			\put(\paperwidth-3cm,-1.5cm){%
+				\begin{tikzpicture}[scale=0.1]
+					\begin{scope}[xshift=0cm, yshift=0cm]
+						\drawlogoboard{""" + init_str + r"""};
+					\end{scope}
+					\begin{scope}[xshift=15cm, yshift=0cm]
+						\drawlogoboard{""" + goal_str + r"""};
+					\end{scope}
+					\draw[black, -{LaTeX[]}] (9cm,9cm) [out=30, in=150] to (16cm,9cm);
+				\end{tikzpicture}%
+			}%
+		}
+    """
 
 
 def getLaTeXGame(game):
@@ -307,6 +362,10 @@ def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
     # initialize the search state
     search = SearchState()
     game = GameState(init_state, goal_state)
+    if game.is_impossible():
+        print("...game is impossible!")
+        return game
+
     heapq.heappush(search.frontier, (0, game))
     search.seen.add(game)
     search.bestGameFound = game
@@ -349,32 +408,47 @@ def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
                 search.bestGameFound = game
                 print("\n...{}\n".format([(i+1, j+1, GameState.dir2str(d)) for i, j, d in game.moves[:game.init_count-game.count]]), end="")
 
+    print("...solution found!" if search.bestGameFound.is_solved() else "...not solved!")
     return search.bestGameFound
 
 
 if __name__ == "__main__":
 
-    filename = "pegs.tex"
-    if filename is not None:
-        print("...writing LaTeX to {}".format(filename))
+    # 45-hole game
+    if False:
+        filename = "pegs45.tex"
+        print("writing LaTeX to {} ...".format(filename))
         with open(filename, 'wt') as file:
             file.write(getLaTeXHeader())
 
-            # solve 45-hole game
             game = prioritySearch()
             file.write("\n\t" + r"\begin{center} {\Huge 45-Hole Peg Solitaire} \end{center}" + "\n")
             file.write(getLaTeXGame(game))
-            file.write("\n" + r"\newpage" + "\n")
+            file.write(getLaTeXFooter())
 
-            # solve 33-hole game
-            start = GameState.fill(1, 33)
-            start[4, 4] = 0
+    # 33-hole games
+    if True:
+        filename = "pegs33.tex"
+        print("writing LaTeX to {} ...".format(filename))
+        with open(filename, 'wt') as file:
+            file.write(getLaTeXHeader())
+            file.write("\n\t\t" + r"\begin{center} {\Huge 33-Hole Peg Solitaire} \\ {\Large single-vacancy complement problems} \end{center}" + "\n")
 
-            goal = np.where(start == -1, -1, 0)
-            goal[4, 4] = 1
+            for location in ((4, 4), (4, 3), (4, 2), (4, 1), (5, 3), (5, 2), (5, 1)):
+                file.write("\n\t\t" + r"\newpage" + "\n")
 
-            game = prioritySearch(init_state=start, goal_state=goal)
-            file.write("\n\t" + r"\begin{center} {\Huge 33-Hole Peg Solitaire} \end{center}" + "\n")
-            file.write(getLaTeXGame(game))
+                start = GameState.fill(1, 33)
+                start[location] = 0
+
+                goal = np.where(start == -1, -1, 0)
+                goal[location] = 1
+
+                file.write(getLaTeXLogo(start, goal))
+                game = prioritySearch(init_state=start, goal_state=goal)
+                if game.is_solved():
+                    file.write(getLaTeXGame(game))
+                else:
+                    file.write(r"""\vspace*{\fill}\begin{center}no solution\end{center}\vspace*{\fill}""" + "\n")
+
             file.write(getLaTeXFooter())
 
