@@ -162,11 +162,27 @@ class GameState:
 
     def is_impossible(self):
         """Returns True if impossible to solve and False if maybe possible to solve."""
-        # check class counts
-        board_counts = GameState.count_classes(self.board)
-        if np.any(board_counts < GameState.count_classes(self.goal)) and \
-            (not self.allow_symmetric or np.any(board_counts < GameState.count_classes(self.goal.T))):
+        # check if already solved
+        if self.is_solved():
+            return False
+
+        # check peg counts
+        if (self.count <= self.goal_count) and (not self.is_solved()):
             return True
+
+        # check class counts
+        board_classes = GameState.count_classes(self.board)
+        goal_classes = GameState.count_classes(self.goal)
+        if np.any(board_classes < goal_classes) and (not self.allow_symmetric or np.any(board_classes < GameState.count_classes(self.goal.T))):
+            return True
+
+        # more class checks (s/t can only take m/c and vice versa)
+        if ((np.sum(board_classes[2:4]) == 0) and (np.sum(goal_classes[0:2]) > 0)) or ((np.sum(board_classes[0:2]) == 0) and (np.sum(goal_classes[2:4]) > 0)):
+            return True
+
+        # check no legal moves
+        #if (np.count_nonzero(board_classes) <= 1):
+        #    return True
 
         # check phase relations (Beasley, pp. 54--56)
         return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
@@ -216,7 +232,8 @@ class GameState:
         return self.count < other.count
 
     def __str__(self):
-        return "\n".join(["".join(["X" if self.board[i, j] == 1 else "." if self.board[i, j] == 0 else " " for j in range(9)]) for i in range(9)])
+        return "\n".join(["".join(["O" if self.board[i, j] == 1 else "." if self.board[i, j] == 0 else " " for j in range(9)]) + \
+                          "\t" + "".join(["X" if self.goal[i, j] == 1 else "." if self.goal[i, j] == 0 else " " for j in range(9)]) for i in range(9)])
 
     def __hash__(self):
         """Hash function needed for insertion into a set."""
@@ -362,6 +379,7 @@ def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
     # initialize the search state
     search = SearchState()
     game = GameState(init_state, goal_state)
+    print(game)
     if game.is_impossible():
         print("...game is impossible!")
         return game
@@ -369,6 +387,12 @@ def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
     heapq.heappush(search.frontier, (0, game))
     search.seen.add(game)
     search.bestGameFound = game
+
+    # sort valid positions by hamming distance to goal state
+    #valid = np.nonzero(game.board != -1)
+    #goal_pegs = np.nonzero(game.goal == 1)
+    #hamming = np.abs(valid[0] - goal_pegs[0][:, None]) + np.abs(valid[1] - goal_pegs[1][:, None])
+    #order = np.transpose(np.transpose(valid)[np.argsort(np.min(hamming, axis=0))])
 
     # keep processing partial games in the queue
     while (len(search.frontier)):
@@ -391,13 +415,15 @@ def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
                 # try making a move
                 attempt = game.move(i, j, d)
                 if attempt is not None:
-                    if attempt in search.seen:
+                    if attempt.is_impossible():
                         search.movesSkipped += 1
-                    elif attempt.is_impossible():
+                    elif attempt in search.seen:
                         search.movesSkipped += 1
                     else:
                         legalMove = True
-                        score = attempt.bounding_area() - attempt.count
+                        #score = 0 if (attempt.count - attempt.goal_count <= 3) else attempt.bounding_area() - attempt.count
+                        #score = (attempt.bounding_area() - attempt.count) * (attempt.count - attempt.goal_count)
+                        score = attempt.count
                         heapq.heappush(search.frontier, (int(score), attempt))
                         search.seen.add(attempt)
 
@@ -414,7 +440,7 @@ def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
 
 if __name__ == "__main__":
 
-    # 45-hole game
+    # 45-hole standard game
     if False:
         filename = "pegs45.tex"
         print("writing LaTeX to {} ...".format(filename))
@@ -426,9 +452,35 @@ if __name__ == "__main__":
             file.write(getLaTeXGame(game))
             file.write(getLaTeXFooter())
 
+    # 45-hole single-vacancy games
+    if False:
+        filename = "pegs45a.tex"
+        print("writing LaTeX to {} ...".format(filename))
+        with open(filename, 'wt') as file:
+            file.write(getLaTeXHeader())
+            file.write("\n\t\t" + r"\begin{center} {\Huge 45-Hole Peg Solitaire} \\ {\Large single-vacancy complement problems} \end{center}" + "\n")
+
+            for location in ((4, 4), (4, 3), (4, 2), (4, 1), (4, 0), (5, 3), (5, 2), (5, 1), (5, 0)):
+                file.write("\n\t\t" + r"\newpage" + "\n")
+
+                start = GameState.fill(1)
+                start[location] = 0
+
+                goal = np.where(start == -1, -1, 0)
+                goal[location] = 1
+
+                file.write(getLaTeXLogo(start, goal))
+                game = prioritySearch(init_state=start, goal_state=goal, maxMoves=10000)
+                if game.is_solved():
+                    file.write(getLaTeXGame(game))
+                else:
+                    file.write(r"""\vspace*{\fill}\begin{center}no solution\end{center}\vspace*{\fill}""" + "\n")
+
+            file.write(getLaTeXFooter())
+
     # 33-hole games
     if True:
-        filename = "pegs33.tex"
+        filename = "pegs33a.tex"
         print("writing LaTeX to {} ...".format(filename))
         with open(filename, 'wt') as file:
             file.write(getLaTeXHeader())
