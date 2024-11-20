@@ -52,8 +52,7 @@ class GameState:
         self.board = np.copy(self.init_state)
 
         if goal_state is None:
-            self.goal = np.array([[-1 if ((i < 3) or (i > 5)) and ((j < 3) or (j > 5)) else 0 for j in range(9)] for i in range(9)], dtype=np.int8)
-            self.goal[4, 4] = 1
+            self.goal = np.where(self.init_state == -1, -1, 1 - self.init_state)
         else:
             self.goal = goal_state
 
@@ -158,7 +157,31 @@ class GameState:
 
     def is_solved(self):
         """Returns True if solved and False otherwise."""
-        return np.array_equal(self.board, self.goal)
+        if np.array_equal(self.board, self.goal):
+            return True
+
+        if (self.allow_symmetric):
+            goal_transposed = np.transpose(self.goal)
+            if np.array_equal(self.board, goal_transposed):
+                return True
+
+            b = np.fliplr(self.board)
+            if np.array_equal(b, self.goal):
+                return True
+            if np.array_equal(b, goal_transposed):
+                return True
+            b = np.flipud(b)
+            if np.array_equal(b, self.goal):
+                return True
+            if np.array_equal(b, goal_transposed):
+                return True
+            b = np.fliplr(b)
+            if np.array_equal(b, self.goal):
+                return True
+            if np.array_equal(b, goal_transposed):
+                return True
+
+        return False
 
     def is_impossible(self):
         """Returns True if impossible to solve and False if maybe possible to solve."""
@@ -167,7 +190,7 @@ class GameState:
             return False
 
         # check peg counts
-        if (self.count <= self.goal_count) and (not self.is_solved()):
+        if (self.count <= self.goal_count):
             return True
 
         # check class counts
@@ -176,13 +199,9 @@ class GameState:
         if np.any(board_classes < goal_classes) and (not self.allow_symmetric or np.any(board_classes < GameState.count_classes(self.goal.T))):
             return True
 
-        # more class checks (s/t can only take m/c and vice versa)
-        if ((np.sum(board_classes[2:4]) == 0) and (np.sum(goal_classes[0:2]) > 0)) or ((np.sum(board_classes[0:2]) == 0) and (np.sum(goal_classes[2:4]) > 0)):
+        # legal moves (s/t can only take m/c and vice versa)
+        if (np.sum(board_classes[2:4]) == 0) or (np.sum(board_classes[0:2]) == 0):
             return True
-
-        # check no legal moves
-        #if (np.count_nonzero(board_classes) <= 1):
-        #    return True
 
         # check phase relations (Beasley, pp. 54--56)
         return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
@@ -232,8 +251,9 @@ class GameState:
         return self.count < other.count
 
     def __str__(self):
-        return "\n".join(["".join(["O" if self.board[i, j] == 1 else "." if self.board[i, j] == 0 else " " for j in range(9)]) + \
-                          "\t" + "".join(["X" if self.goal[i, j] == 1 else "." if self.goal[i, j] == 0 else " " for j in range(9)]) for i in range(9)])
+        return "\n".join(["".join(["*" if self.init_state[i, j] == 1 else "." if self.init_state[i, j] == 0 else " " for j in range(9)]) + \
+            "\t" + "".join(["O" if self.board[i, j] == 1 else "." if self.board[i, j] == 0 else " " for j in range(9)]) + \
+            "\t" + "".join(["X" if self.goal[i, j] == 1 else "." if self.goal[i, j] == 0 else " " for j in range(9)]) for i in range(9)])
 
     def __hash__(self):
         """Hash function needed for insertion into a set."""
@@ -421,9 +441,19 @@ def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
                         search.movesSkipped += 1
                     else:
                         legalMove = True
-                        #score = 0 if (attempt.count - attempt.goal_count <= 3) else attempt.bounding_area() - attempt.count
+                        score = 0 if (attempt.count - attempt.goal_count <= 3) else attempt.bounding_area() - attempt.count
                         #score = (attempt.bounding_area() - attempt.count) * (attempt.count - attempt.goal_count)
-                        score = attempt.count
+                        #score = attempt.count
+
+                        #pegs = np.nonzero(attempt.board == 1)
+                        #goal_pegs = np.nonzero(attempt.goal == 1)
+                        #hamming = np.abs(pegs[0] - goal_pegs[0][:, None]) + np.abs(pegs[1] - goal_pegs[1][:, None])
+                        #score = np.sum(np.min(hamming, axis=0))
+
+                        #board_classes = GameState.count_classes(attempt.board)
+                        #score = np.square(np.sum(board_classes[2:4])) + np.square(np.sum(board_classes[0:2]))
+                        #score = np.maximum(np.sum(board_classes[2:4]), np.sum(board_classes[0:2]))
+
                         heapq.heappush(search.frontier, (int(score), attempt))
                         search.seen.add(attempt)
 
@@ -433,6 +463,7 @@ def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
             if game.iou() > search.bestGameFound.iou():
                 search.bestGameFound = game
                 print("\n...{}\n".format([(i+1, j+1, GameState.dir2str(d)) for i, j, d in game.moves[:game.init_count-game.count]]), end="")
+                print(game)
 
     print("...solution found!" if search.bestGameFound.is_solved() else "...not solved!")
     return search.bestGameFound
