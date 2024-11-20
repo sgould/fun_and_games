@@ -390,7 +390,7 @@ def getLaTeXGame(game):
     return out_str
 
 
-def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
+def prioritySearch(init_state=None, goal_state=None, allow_symmetric=True, maxMoves=None):
     """Search for a solution using a priority queue ('frontier') to maintain partial games. Skips any game already
     added to the queue or previously processed from the queue ('seen')."""
 
@@ -398,7 +398,7 @@ def prioritySearch(init_state=None, goal_state=None, maxMoves=None):
 
     # initialize the search state
     search = SearchState()
-    game = GameState(init_state, goal_state)
+    game = GameState(init_state, goal_state, allow_symmetric)
     print(game)
     if game.is_impossible():
         print("...game is impossible!")
@@ -484,7 +484,7 @@ if __name__ == "__main__":
             file.write(getLaTeXFooter())
 
     # 45-hole single-vacancy games
-    if False:
+    if True:
         filename = "pegs45a.tex"
         print("writing LaTeX to {} ...".format(filename))
         with open(filename, 'wt') as file:
@@ -501,7 +501,7 @@ if __name__ == "__main__":
                 goal[location] = 1
 
                 file.write(getLaTeXLogo(start, goal))
-                game = prioritySearch(init_state=start, goal_state=goal, maxMoves=10000)
+                game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False)
                 if game.is_solved():
                     file.write(getLaTeXGame(game))
                 else:
@@ -510,7 +510,7 @@ if __name__ == "__main__":
             file.write(getLaTeXFooter())
 
     # 33-hole games
-    if True:
+    if False:
         filename = "pegs33a.tex"
         print("writing LaTeX to {} ...".format(filename))
         with open(filename, 'wt') as file:
@@ -527,7 +527,7 @@ if __name__ == "__main__":
                 goal[location] = 1
 
                 file.write(getLaTeXLogo(start, goal))
-                game = prioritySearch(init_state=start, goal_state=goal)
+                game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False)
                 if game.is_solved():
                     file.write(getLaTeXGame(game))
                 else:
