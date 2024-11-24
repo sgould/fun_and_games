@@ -82,6 +82,34 @@ class GameState:
         return board
 
     @staticmethod
+    def symmetric_cmp_eq(board, other):
+        """Returns true if two boards are equal, taking into account symmetry."""
+        if np.array_equal(board, other):
+            return True
+
+        other_transposed = np.transpose(other)
+        if np.array_equal(board, other_transposed):
+            return True
+
+        b = np.fliplr(board)
+        if np.array_equal(b, other):
+            return True
+        if np.array_equal(b, other_transposed):
+            return True
+        b = np.flipud(b)
+        if np.array_equal(b, other):
+            return True
+        if np.array_equal(b, other_transposed):
+            return True
+        b = np.fliplr(b)
+        if np.array_equal(b, other):
+            return True
+        if np.array_equal(b, other_transposed):
+            return True
+
+        return False
+
+    @staticmethod
     def dir2str(d):
         """Convert direction to string."""
         if   d == 0: return "down"
@@ -157,31 +185,11 @@ class GameState:
 
     def is_solved(self):
         """Returns True if solved and False otherwise."""
-        if np.array_equal(self.board, self.goal):
-            return True
-
-        if (self.allow_symmetric):
-            goal_transposed = np.transpose(self.goal)
-            if np.array_equal(self.board, goal_transposed):
-                return True
-
-            b = np.fliplr(self.board)
-            if np.array_equal(b, self.goal):
-                return True
-            if np.array_equal(b, goal_transposed):
-                return True
-            b = np.flipud(b)
-            if np.array_equal(b, self.goal):
-                return True
-            if np.array_equal(b, goal_transposed):
-                return True
-            b = np.fliplr(b)
-            if np.array_equal(b, self.goal):
-                return True
-            if np.array_equal(b, goal_transposed):
-                return True
-
-        return False
+        if self.count != self.goal_count:
+            return False
+        if self.allow_symmetric:
+            return GameState.symmetric_cmp_eq(self.board, self.goal)
+        return np.array_equal(self.board, self.goal)
 
     def is_impossible(self):
         """Returns True if impossible to solve and False if maybe possible to solve."""
@@ -221,31 +229,9 @@ class GameState:
         """Equality operator. Checks for rotation and reflection symmetries."""
         if (self.count != other.count):
             return False
-        if np.array_equal(self.board, other.board):
-            return True
-
-        if (self.allow_symmetric):
-            other_transposed = np.transpose(other.board)
-            if np.array_equal(self.board, other_transposed):
-                return True
-
-            b = np.fliplr(self.board)
-            if np.array_equal(b, other.board):
-                return True
-            if np.array_equal(b, other_transposed):
-                return True
-            b = np.flipud(b)
-            if np.array_equal(b, other.board):
-                return True
-            if np.array_equal(b, other_transposed):
-                return True
-            b = np.fliplr(b)
-            if np.array_equal(b, other.board):
-                return True
-            if np.array_equal(b, other_transposed):
-                return True
-
-        return False
+        if self.allow_symmetric:
+            return GameState.symmetric_cmp_eq(self.board, other.board)
+        return np.array_equal(self.board, other.board)
 
     def __lt__(self, other):
         return self.count < other.count
@@ -442,17 +428,22 @@ def prioritySearch(init_state=None, goal_state=None, allow_symmetric=True, maxMo
                     else:
                         legalMove = True
                         score = 0 if (attempt.count - attempt.goal_count <= 3) else attempt.bounding_area() - attempt.count
-                        #score = (attempt.bounding_area() - attempt.count) * (attempt.count - attempt.goal_count)
                         #score = attempt.count
 
                         #pegs = np.nonzero(attempt.board == 1)
                         #goal_pegs = np.nonzero(attempt.goal == 1)
                         #hamming = np.abs(pegs[0] - goal_pegs[0][:, None]) + np.abs(pegs[1] - goal_pegs[1][:, None])
-                        #score = np.sum(np.min(hamming, axis=0))
+                        #score = np.average(np.maximum(np.min(hamming, axis=0) - 1, 0))
 
-                        #board_classes = GameState.count_classes(attempt.board)
-                        #score = np.square(np.sum(board_classes[2:4])) + np.square(np.sum(board_classes[0:2]))
-                        #score = np.maximum(np.sum(board_classes[2:4]), np.sum(board_classes[0:2]))
+                        #delta_classes = GameState.count_classes(attempt.board) - GameState.count_classes(attempt.goal)
+                        #score = np.square(np.sum(delta_classes[2:4])) + np.square(np.sum(delta_classes[0:2]))
+                        #score = attempt.bounding_area() - np.maximum(np.sum(delta_classes[2:4]), np.sum(delta_classes[0:2]))
+                        #score = np.sum(delta_classes[2:4]) * np.sum(delta_classes[0:2])
+                        #score = np.sum(delta_classes[2:4]) * np.sum(delta_classes[0:2]) * np.sum(np.min(hamming, axis=0))
+
+                        #hamming = np.abs(pegs[0] - pegs[0][:, None]) + np.abs(pegs[1] - pegs[1][:, None])
+                        #np.fill_diagonal(hamming, 9)
+                        #score = np.sum(np.min(hamming, axis=0) > 2)
 
                         heapq.heappush(search.frontier, (int(score), attempt))
                         search.seen.add(attempt)
@@ -483,6 +474,58 @@ if __name__ == "__main__":
             file.write(getLaTeXGame(game))
             file.write(getLaTeXFooter())
 
+    # 33-hole corner game
+    if False:
+        start = GameState.fill(1, 33)
+        start[4, 4] = 0
+
+        goal = np.where(start == -1, -1, 1 - start)
+        #goal[1, 3] = goal[1, 4] = goal[1, 5] = 1
+        #goal[7, 3] = goal[7, 4] = goal[7, 5] = 1
+        #goal[3, 1] = goal[4, 1] = goal[5, 1] = 1
+        #goal[3, 7] = goal[4, 7] = goal[5, 7] = 1
+
+        goal[1, 3] = goal[1, 5] = 1
+        goal[7, 3] = goal[7, 5] = 1
+        goal[3, 1] = goal[5, 1] = 1
+        goal[3, 7] = goal[5, 7] = 1
+
+        filename = "pegs33.tex"
+        print("writing LaTeX to {} ...".format(filename))
+        with open(filename, 'wt') as file:
+            file.write(getLaTeXHeader())
+
+            game = prioritySearch(start, goal, True)
+            file.write(getLaTeXLogo(start, goal))
+            file.write(getLaTeXGame(game))
+            file.write(getLaTeXFooter())
+
+        exit(0)
+
+    # 45-hole corner game
+    if False:
+        start = GameState.fill(1, 45)
+        start[4, 4] = 0
+
+        goal = np.where(start == -1, -1, 1 - start)
+        goal[0, 3] = goal[0, 5] = 1
+        goal[8, 3] = goal[8, 5] = 1
+        goal[3, 0] = goal[5, 0] = 1
+        goal[3, 8] = goal[5, 8] = 1
+
+        filename = "pegs45c.tex"
+        print("writing LaTeX to {} ...".format(filename))
+        with open(filename, 'wt') as file:
+            file.write(getLaTeXHeader())
+
+            game = prioritySearch(start, goal, True)
+            file.write(getLaTeXLogo(start, goal))
+            file.write(getLaTeXGame(game))
+            file.write(getLaTeXFooter())
+
+        exit(0)
+
+
     # 45-hole single-vacancy games
     if True:
         filename = "pegs45a.tex"
@@ -501,7 +544,7 @@ if __name__ == "__main__":
                 goal[location] = 1
 
                 file.write(getLaTeXLogo(start, goal))
-                game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False)
+                game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False, maxMoves=100000)
                 if game.is_solved():
                     file.write(getLaTeXGame(game))
                 else:
