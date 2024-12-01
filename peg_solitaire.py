@@ -1,4 +1,4 @@
-# 9x9 (45-HOLE) PEG SOLITAIRE
+# 9x9 (45-HOLE) AND 7x7 (33-HOLE) PEG SOLITAIRE
 # Stephen Gould
 #
 #                   (0,3) (0,4) (0,5)
@@ -225,6 +225,16 @@ class GameState:
         union =  np.transpose(np.nonzero(np.logical_or(self.board == 1, self.goal == 1)))
         return np.prod(np.max(union, axis=0) - np.min(union, axis=0) + 1)
 
+    def counts_in_bounding_area(self):
+        """Returns count of illegal, empty and pegs in bounding box around board and goal."""
+        union =  np.transpose(np.nonzero(np.logical_or(self.board == 1, self.goal == 1)))
+        ub = np.max(union, axis=0)
+        lb = np.min(union, axis=0)
+        n_illegal = np.sum(self.board[lb[0]:ub[0]+1, lb[1]:ub[1]+1] == -1)
+        n_empty = np.sum(self.board[lb[0]:ub[0]+1, lb[1]:ub[1]+1] == 0)
+        n_pegs = np.sum(self.board[lb[0]:ub[0]+1, lb[1]:ub[1]+1] == 1)
+        return n_illegal, n_empty, n_pegs
+    
     def __eq__(self, other):
         """Equality operator. Checks for rotation and reflection symmetries."""
         if (self.count != other.count):
@@ -394,12 +404,6 @@ def prioritySearch(init_state=None, goal_state=None, allow_symmetric=True, maxMo
     search.seen.add(game)
     search.bestGameFound = game
 
-    # sort valid positions by hamming distance to goal state
-    #valid = np.nonzero(game.board != -1)
-    #goal_pegs = np.nonzero(game.goal == 1)
-    #hamming = np.abs(valid[0] - goal_pegs[0][:, None]) + np.abs(valid[1] - goal_pegs[1][:, None])
-    #order = np.transpose(np.transpose(valid)[np.argsort(np.min(hamming, axis=0))])
-
     # keep processing partial games in the queue
     while (len(search.frontier)):
         search.movesEvaluated += 1
@@ -427,23 +431,14 @@ def prioritySearch(init_state=None, goal_state=None, allow_symmetric=True, maxMo
                         search.movesSkipped += 1
                     else:
                         legalMove = True
-                        score = 0 if (attempt.count - attempt.goal_count <= 3) else attempt.bounding_area() - attempt.count
+                        #score = attempt.bounding_area() - attempt.count
                         #score = attempt.count
 
-                        #pegs = np.nonzero(attempt.board == 1)
-                        #goal_pegs = np.nonzero(attempt.goal == 1)
-                        #hamming = np.abs(pegs[0] - goal_pegs[0][:, None]) + np.abs(pegs[1] - goal_pegs[1][:, None])
-                        #score = np.average(np.maximum(np.min(hamming, axis=0) - 1, 0))
-
-                        #delta_classes = GameState.count_classes(attempt.board) - GameState.count_classes(attempt.goal)
-                        #score = np.square(np.sum(delta_classes[2:4])) + np.square(np.sum(delta_classes[0:2]))
-                        #score = attempt.bounding_area() - np.maximum(np.sum(delta_classes[2:4]), np.sum(delta_classes[0:2]))
-                        #score = np.sum(delta_classes[2:4]) * np.sum(delta_classes[0:2])
-                        #score = np.sum(delta_classes[2:4]) * np.sum(delta_classes[0:2]) * np.sum(np.min(hamming, axis=0))
-
-                        #hamming = np.abs(pegs[0] - pegs[0][:, None]) + np.abs(pegs[1] - pegs[1][:, None])
-                        #np.fill_diagonal(hamming, 9)
-                        #score = np.sum(np.min(hamming, axis=0) > 2)
+                        n_i, n_e, n_p = attempt.counts_in_bounding_area()
+                        score = n_e * n_p
+                        
+                        if (attempt.count - attempt.goal_count <= 3):
+                            score = 0
 
                         heapq.heappush(search.frontier, (int(score), attempt))
                         search.seen.add(attempt)
@@ -456,6 +451,7 @@ def prioritySearch(init_state=None, goal_state=None, allow_symmetric=True, maxMo
                 print("\n...{}\n".format([(i+1, j+1, GameState.dir2str(d)) for i, j, d in game.moves[:game.init_count-game.count]]), end="")
                 print(game)
 
+    print(game)
     print("...solution found!" if search.bestGameFound.is_solved() else "...not solved!")
     return search.bestGameFound
 
@@ -544,12 +540,13 @@ if __name__ == "__main__":
                 goal[location] = 1
 
                 file.write(getLaTeXLogo(start, goal))
-                game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False, maxMoves=100000)
+                game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False, maxMoves=1000000)
                 if game.is_solved():
                     file.write(getLaTeXGame(game))
                 else:
                     file.write(r"""\vspace*{\fill}\begin{center}no solution\end{center}\vspace*{\fill}""" + "\n")
-
+                    # TODO: show best game found
+                    
             file.write(getLaTeXFooter())
 
     # 33-hole games
