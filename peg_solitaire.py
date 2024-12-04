@@ -1,15 +1,17 @@
 # 9x9 (45-HOLE) AND 7x7 (33-HOLE) PEG SOLITAIRE
 # Stephen Gould
 #
-#                   (0,3) (0,4) (0,5)
-#                   (1,3) (1,4) (1,5)
-#                   (2,3) (2,4) (2,5)
-# (3,0) (3,1) (3,2) (3,3) (3,4) (3,5) (3,6) (3,7) (3,8)
-# (4,0) (4,1) (4,2) (4,3) (4,4) (4,5) (4,6) (4,7) (4,8)
-# (5,0) (5,1) (5,2) (5,3) (5,4) (5,5) (5,6) (5,7) (5,8)
-#                   (6,3) (6,4) (6,5)
-#                   (7,3) (7,4) (7,5)
-#                   (8,3) (8,4) (8,5)
+# Indexing (row,col) and classes:
+#
+#                   (0,3) (0,4) (0,5)                                 C A C
+#                   (1,3) (1,4) (1,5)                                 B D B
+#                   (2,3) (2,4) (2,5)                                 C A C
+# (3,0) (3,1) (3,2) (3,3) (3,4) (3,5) (3,6) (3,7) (3,8)         D B D B D B D B D
+# (4,0) (4,1) (4,2) (4,3) (4,4) (4,5) (4,6) (4,7) (4,8)         A C A C A C A C A
+# (5,0) (5,1) (5,2) (5,3) (5,4) (5,5) (5,6) (5,7) (5,8)         D B D B D B D B D
+#                   (6,3) (6,4) (6,5)                                 C A C
+#                   (7,3) (7,4) (7,5)                                 B D B
+#                   (8,3) (8,4) (8,5)                                 C A C
 #
 
 import copy
@@ -133,12 +135,12 @@ class GameState:
         Peg Solitaire, Chapter 2. Note that Beasley defines a 7x7 board."""
 
         pegs = np.mod(np.nonzero(board == 1), 2)
-        m = np.sum(np.logical_and(pegs[0] == 0, pegs[1] == 0))
-        c = np.sum(np.logical_and(pegs[0] == 1, pegs[1] == 1))
-        s = np.sum(np.logical_and(pegs[0] == 0, pegs[1] == 1))
-        t = np.sum(np.logical_and(pegs[0] == 1, pegs[1] == 0))
+        nA = np.sum(np.logical_and(pegs[0] == 0, pegs[1] == 0))
+        nB = np.sum(np.logical_and(pegs[0] == 1, pegs[1] == 1))
+        nC = np.sum(np.logical_and(pegs[0] == 0, pegs[1] == 1))
+        nD = np.sum(np.logical_and(pegs[0] == 1, pegs[1] == 0))
 
-        return np.array([m, c, s, t], dtype=np.int8)
+        return np.array([nA, nB, nC, nD], dtype=np.int8)
 
     @staticmethod
     def phase_relations(board):
@@ -207,9 +209,44 @@ class GameState:
         if np.any(board_classes < goal_classes) and (not self.allow_symmetric or np.any(board_classes < GameState.count_classes(self.goal.T))):
             return True
 
-        # legal moves (s/t can only take m/c and vice versa)
+        # legal moves (C/D classes can only take A/B classes and vice versa)
         if (np.sum(board_classes[2:4]) == 0) or (np.sum(board_classes[0:2]) == 0):
             return True
+
+        # check class horizontal and vertical distances to goal state
+        # e.g., if an A peg is two horizontal jumps an one vertical jump away from the goal then it needs at least two
+        # C pegs and one D peg to get there
+        # TODO: deal with symmetric case
+        # TODO: use hungarian matching for multi-peg goal state
+        if not self.allow_symmetric:
+            pegsA = np.nonzero(self.board[0::2, 0::2] == 1)
+            pegsB = np.nonzero(self.board[1::2, 1::2] == 1)
+            pegsC = np.nonzero(self.board[0::2, 1::2] == 1)
+            pegsD = np.nonzero(self.board[1::2, 0::2] == 1)
+            goalA = np.nonzero(self.goal[0::2, 0::2] == 1)
+            goalB = np.nonzero(self.goal[1::2, 1::2] == 1)
+            goalC = np.nonzero(self.goal[0::2, 1::2] == 1)
+            goalD = np.nonzero(self.goal[1::2, 0::2] == 1)
+
+            # check enough C pegs for horizontal distance to A and vertical distance to B
+            if ((0 if len(goalA[1]) == 0 else np.sum(np.min(np.abs(pegsA[1] - goalA[1][:, None]), axis=1))) +
+                (0 if len(goalB[0]) == 0 else np.sum(np.min(np.abs(pegsB[0] - goalB[0][:, None]), axis=1)))) > board_classes[2]:
+                return True
+
+            # check enough D pegs for vertical distance to A and horizontal distance to B
+            if ((0 if len(goalA[0]) == 0 else np.sum(np.min(np.abs(pegsA[0] - goalA[0][:, None]), axis=1))) +
+                (0 if len(goalB[1]) == 0 else np.sum(np.min(np.abs(pegsB[1] - goalB[1][:, None]), axis=1)))) > board_classes[3]:
+                return True
+
+            # check enough A pegs for horizontal distance to C and vertical distance to D
+            if ((0 if len(goalC[1]) == 0 else np.sum(np.min(np.abs(pegsC[1] - goalC[1][:, None]), axis=1))) +
+                (0 if len(goalD[0]) == 0 else np.sum(np.min(np.abs(pegsD[0] - goalD[0][:, None]), axis=1)))) > board_classes[0]:
+                return True
+
+            # check enough B pegs for vertical distance to C and horizontal distance to D
+            if ((0 if len(goalC[0]) == 0 else np.sum(np.min(np.abs(pegsC[0] - goalC[0][:, None]), axis=1))) +
+                (0 if len(goalD[1]) == 0 else np.sum(np.min(np.abs(pegsD[1] - goalD[1][:, None]), axis=1)))) > board_classes[1]:
+                return True
 
         # check phase relations (Beasley, pp. 54--56)
         return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
@@ -248,7 +285,7 @@ class GameState:
 
     def __str__(self):
         return "\n".join(["".join(["*" if self.init_state[i, j] == 1 else "." if self.init_state[i, j] == 0 else " " for j in range(9)]) + \
-            "\t" + "".join(["O" if self.board[i, j] == 1 else "." if self.board[i, j] == 0 else " " for j in range(9)]) + \
+            "\t" + "".join([(("A", "C"), ("D", "B"))[i % 2][j % 2] if self.board[i, j] == 1 else "." if self.board[i, j] == 0 else " " for j in range(9)]) + \
             "\t" + "".join(["X" if self.goal[i, j] == 1 else "." if self.goal[i, j] == 0 else " " for j in range(9)]) for i in range(9)])
 
     def __hash__(self):
@@ -436,7 +473,7 @@ def prioritySearch(init_state=None, goal_state=None, allow_symmetric=True, maxMo
 
                         n_i, n_e, n_p = attempt.counts_in_bounding_area()
                         score = n_e * n_p
-                        
+
                         if (attempt.count - attempt.goal_count <= 3):
                             score = 0
 
@@ -458,6 +495,29 @@ def prioritySearch(init_state=None, goal_state=None, allow_symmetric=True, maxMo
 
 if __name__ == "__main__":
 
+    # testing
+    if False:
+        start = GameState.fill(0, 45)
+        start[4, 6] = 1
+        start[4, 4] = 1
+        start[4, 2] = 1
+        start[4, 1] = 1
+
+        start[0, 4] = 1
+        start[7, 4] = 1
+
+        goal = GameState.fill(0, 45)
+        goal[4, 7] = 1
+        goal[8, 4] = 1
+
+        game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False)
+
+        start[0, 4] = 0
+        start[6, 4] = 1
+        game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False)
+
+        exit(0)
+
     # 45-hole standard game
     if False:
         filename = "pegs45.tex"
@@ -465,8 +525,26 @@ if __name__ == "__main__":
         with open(filename, 'wt') as file:
             file.write(getLaTeXHeader())
 
-            game = prioritySearch()
+            game = prioritySearch(allow_symmetric=False)
             file.write("\n\t" + r"\begin{center} {\Huge 45-Hole Peg Solitaire} \end{center}" + "\n")
+            file.write(getLaTeXGame(game))
+            file.write(getLaTeXFooter())
+
+    # 33-hole standard game
+    if False:
+        filename = "pegs33.tex"
+        print("writing LaTeX to {} ...".format(filename))
+        with open(filename, 'wt') as file:
+            file.write(getLaTeXHeader())
+
+            start = GameState.fill(1, 33)
+            start[4, 4] = 0
+
+            goal = np.where(start == -1, -1, 0)
+            goal[4, 4] = 1
+
+            game = prioritySearch(init_state=start, goal_state=goal)
+            file.write("\n\t" + r"\begin{center} {\Huge 33-Hole Peg Solitaire} \end{center}" + "\n")
             file.write(getLaTeXGame(game))
             file.write(getLaTeXFooter())
 
@@ -521,9 +599,8 @@ if __name__ == "__main__":
 
         exit(0)
 
-
     # 45-hole single-vacancy games
-    if True:
+    if False:
         filename = "pegs45a.tex"
         print("writing LaTeX to {} ...".format(filename))
         with open(filename, 'wt') as file:
@@ -540,7 +617,7 @@ if __name__ == "__main__":
                 goal[location] = 1
 
                 file.write(getLaTeXLogo(start, goal))
-                game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False, maxMoves=1000000)
+                game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False, maxMoves=10000000)
                 if game.is_solved():
                     file.write(getLaTeXGame(game))
                 else:
@@ -550,7 +627,7 @@ if __name__ == "__main__":
             file.write(getLaTeXFooter())
 
     # 33-hole games
-    if False:
+    if True:
         filename = "pegs33a.tex"
         print("writing LaTeX to {} ...".format(filename))
         with open(filename, 'wt') as file:
