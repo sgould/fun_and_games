@@ -84,6 +84,22 @@ class GameState:
         return board
 
     @staticmethod
+    def set(board, pegs):
+        """Returns a new board with 'pegs' locations set to one."""
+        board = copy.deepcopy(board)
+        for p in pegs:
+            board[p] = 1
+        return board
+
+    @staticmethod
+    def clear(board, pegs):
+        """Returns a new board with 'pegs' locations set to zero."""
+        board = copy.deepcopy(board)
+        for p in pegs:
+            board[p] = 0
+        return board
+
+    @staticmethod
     def symmetric_cmp_eq(board, other):
         """Returns true if two boards are equal, taking into account symmetry."""
         if np.array_equal(board, other):
@@ -157,6 +173,25 @@ class GameState:
 
         return np.mod(parity, 2) == len(pegs[0]) % 2
 
+    def save(self, fh):
+        """Save state to a given file handle."""
+        np.save(fh, self.init_state)
+        np.save(fh, self.goal)
+        np.save(fh, self.board)
+        np.save(fh, self.moves)
+        fh.write((0 if self.allow_symmetric else 1).to_bytes(4, 'big'))
+
+    def load(self, fh):
+        """Load state from a given file handle."""
+        self.init_state = np.load(fh)
+        self.goal = np.load(fh)
+        self.board = np.load(fh)
+        self.moves = np.load(fh)
+        self.allow_symmetric = int.from_bytes(fh.read(4), 'big') != 0
+        self.init_count = np.count_nonzero(self.init_state == 1)
+        self.goal_count = np.count_nonzero(self.goal == 1)
+        self.count = np.count_nonzero(self.board == 1)
+
     def move(self, i, j, d):
         """Execute a jump from (i,j) in direction d. Returns new GameState if successful and None otherwise."""
         #assert (0 <= i < 9) and (0 <= j < 9) and (0 <= d < 4)
@@ -213,39 +248,145 @@ class GameState:
         if (np.sum(board_classes[2:4]) == 0) or (np.sum(board_classes[0:2]) == 0):
             return True
 
+        # TODO: deal with symmetric case later
+        if self.allow_symmetric:
+            return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
+
+        # check pegs trapped in top, bottom, left and right 3x3 blocks
+        if board_classes[1] == 0: # no B's
+            if np.any(self.board[0:3:2, 1::2] == 1) and np.all(self.goal[0:3:2, 1::2] != 1):
+                return True
+            if np.any(self.board[6::2, 1::2] == 1) and np.all(self.goal[6::2, 1::2] != 1):
+                return True
+            if np.any(self.board[1::2, 0:3:2] == 1) and np.all(self.goal[1::2, 0:3:2] != 1):
+                return True
+            if np.any(self.board[1::2, 6::2] == 1) and np.all(self.goal[1::2, 6::2] != 1):
+                return True
+
+        if board_classes[2] == 0: # no C's
+            if ((self.board[1, 3] == 1) or (self.board[1, 5] == 1)) and (self.goal[1, 3] != 1) and (self.goal[1, 5] != 1):
+                return True
+            if ((self.board[7, 3] == 1) or (self.board[7, 5] == 1)) and (self.goal[7, 3] != 1) and (self.goal[7, 5] != 1):
+                return True
+            if ((self.board[4, 0] == 1) and (self.goal[4, 0] != 1)) or ((self.board[4, 2] == 1) and (self.goal[4, 2] != 1)):
+                return True
+            if ((self.board[4, 6] == 1) and (self.goal[4, 6] != 1)) or ((self.board[4, 8] == 1) and (self.goal[4, 8] != 1)):
+                return True
+
+        if board_classes[3] == 0: # no D's
+            if ((self.board[0, 4] == 1) and (self.goal[0, 4] != 1)) or ((self.board[2, 4] == 1) and (self.goal[2, 4] != 1)):
+                return True
+            if ((self.board[6, 4] == 1) and (self.goal[6, 4] != 1)) or ((self.board[8, 4] == 1) and (self.goal[8, 4] != 1)):
+                return True
+            if ((self.board[3, 1] == 1) or (self.board[5, 1] == 1)) and (self.goal[3, 1] != 1) and (self.goal[5, 1] != 1):
+                return True
+            if ((self.board[3, 7] == 1) or (self.board[5, 7] == 1)) and (self.goal[3, 7] != 1) and (self.goal[5, 6] != 1):
+                return True
+
         # check class horizontal and vertical distances to goal state
         # e.g., if an A peg is two horizontal jumps an one vertical jump away from the goal then it needs at least two
         # C pegs and one D peg to get there
-        # TODO: deal with symmetric case
-        # TODO: use hungarian matching for multi-peg goal state
-        if not self.allow_symmetric:
-            pegsA = np.nonzero(self.board[0::2, 0::2] == 1)
-            pegsB = np.nonzero(self.board[1::2, 1::2] == 1)
-            pegsC = np.nonzero(self.board[0::2, 1::2] == 1)
-            pegsD = np.nonzero(self.board[1::2, 0::2] == 1)
-            goalA = np.nonzero(self.goal[0::2, 0::2] == 1)
-            goalB = np.nonzero(self.goal[1::2, 1::2] == 1)
-            goalC = np.nonzero(self.goal[0::2, 1::2] == 1)
-            goalD = np.nonzero(self.goal[1::2, 0::2] == 1)
+        # TODO: why does standard 45-hole game process more moves when aborting on the conditions below?
+        # TODO: use hungarian matching for multi-peg goal state to avoid two goal states selecting same nearest peg
 
-            # check enough C pegs for horizontal distance to A and vertical distance to B
-            if ((0 if len(goalA[1]) == 0 else np.sum(np.min(np.abs(pegsA[1] - goalA[1][:, None]), axis=1))) +
-                (0 if len(goalB[0]) == 0 else np.sum(np.min(np.abs(pegsB[0] - goalB[0][:, None]), axis=1)))) > board_classes[2]:
+        # UNCOMMENT NEXT LINE TO SKIP ADDITIONAL CHECKS
+        return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
+
+        pegsA = np.nonzero(self.board[0::2, 0::2] == 1)
+        pegsB = np.nonzero(self.board[1::2, 1::2] == 1)
+        pegsC = np.nonzero(self.board[0::2, 1::2] == 1)
+        pegsD = np.nonzero(self.board[1::2, 0::2] == 1)
+        goalA = np.nonzero(self.goal[0::2, 0::2] == 1)
+        goalB = np.nonzero(self.goal[1::2, 1::2] == 1)
+        goalC = np.nonzero(self.goal[0::2, 1::2] == 1)
+        goalD = np.nonzero(self.goal[1::2, 0::2] == 1)
+
+        # check enough C pegs for horizontal distance to A and vertical distance to B
+        if ((0 if len(goalA[1]) == 0 else np.sum(np.min(np.abs(pegsA[1] - goalA[1][:, None]), axis=1))) +
+            (0 if len(goalB[0]) == 0 else np.sum(np.min(np.abs(pegsB[0] - goalB[0][:, None]), axis=1)))) > board_classes[2]:
+            return True
+
+        # check enough D pegs for vertical distance to A and horizontal distance to B
+        if ((0 if len(goalA[0]) == 0 else np.sum(np.min(np.abs(pegsA[0] - goalA[0][:, None]), axis=1))) +
+            (0 if len(goalB[1]) == 0 else np.sum(np.min(np.abs(pegsB[1] - goalB[1][:, None]), axis=1)))) > board_classes[3]:
+            return True
+
+        # check enough A pegs for horizontal distance to C and vertical distance to D
+        if ((0 if len(goalC[1]) == 0 else np.sum(np.min(np.abs(pegsC[1] - goalC[1][:, None]), axis=1))) +
+            (0 if len(goalD[0]) == 0 else np.sum(np.min(np.abs(pegsD[0] - goalD[0][:, None]), axis=1)))) > board_classes[0]:
+            return True
+
+        # check enough B pegs for vertical distance to C and horizontal distance to D
+        if ((0 if len(goalC[0]) == 0 else np.sum(np.min(np.abs(pegsC[0] - goalC[0][:, None]), axis=1))) +
+            (0 if len(goalD[1]) == 0 else np.sum(np.min(np.abs(pegsD[1] - goalD[1][:, None]), axis=1)))) > board_classes[1]:
+            return True
+
+        # check non-goal D pegs can be cleared
+        if (goal_classes[3] == 0) and (board_classes[3] != 0):
+            existA, existB = False, False
+            if (board_classes[0] != 0):
+                v = np.logical_and(np.abs(2 * pegsA[0] - (2 * pegsD[0][:, None] + 1)) <= 2 * board_classes[3],
+                                   np.abs(2 * pegsA[1] - 2 * pegsD[1][:, None]) <= 2 * board_classes[2] + 1)
+                existA = np.any(v, axis=1)
+
+            if (board_classes[1] != 0):
+                v = np.logical_and(np.abs((2 * pegsB[1] + 1) - 2 * pegsD[1][:, None]) <= 2 * board_classes[3],
+                                   np.abs((2 * pegsB[0] + 1) - (2 * pegsD[0][:, None] + 1)) <= 2 * board_classes[2] + 1)
+                existB = np.any(v, axis=1)
+
+            if not np.all(np.logical_or(existA, existB)):
+                #print("\n--- can't clear D pegs ---"); print(self); print("---")
                 return True
 
-            # check enough D pegs for vertical distance to A and horizontal distance to B
-            if ((0 if len(goalA[0]) == 0 else np.sum(np.min(np.abs(pegsA[0] - goalA[0][:, None]), axis=1))) +
-                (0 if len(goalB[1]) == 0 else np.sum(np.min(np.abs(pegsB[1] - goalB[1][:, None]), axis=1)))) > board_classes[3]:
+        # check non-goal C pegs can be cleared
+        if (goal_classes[2] == 0) and (board_classes[2] != 0):
+            existA, existB = False, False
+            if (board_classes[0] != 0):
+                v = np.logical_and(np.abs(2 * pegsA[1] - (2 * pegsC[1][:, None] + 1)) <= 2 * board_classes[2],
+                                   np.abs(2 * pegsA[0] - 2 * pegsC[0][:, None]) <= 2 * board_classes[3] + 1)
+                existA = np.any(v, axis=1)
+
+            if (board_classes[1] != 0):
+                v = np.logical_and(np.abs((2 * pegsB[0] + 1) - 2 * pegsC[0][:, None]) <= 2 * board_classes[2],
+                                   np.abs((2 * pegsB[1] + 1) - (2 * pegsC[1][:, None] + 1)) <= 2 * board_classes[3] + 1)
+                existB = np.any(v, axis=1)
+
+            if not np.all(np.logical_or(existA, existB)):
+                #print("\n--- can't clear C pegs ---"); print(self); print("---")
                 return True
 
-            # check enough A pegs for horizontal distance to C and vertical distance to D
-            if ((0 if len(goalC[1]) == 0 else np.sum(np.min(np.abs(pegsC[1] - goalC[1][:, None]), axis=1))) +
-                (0 if len(goalD[0]) == 0 else np.sum(np.min(np.abs(pegsD[0] - goalD[0][:, None]), axis=1)))) > board_classes[0]:
+        # check non-goal B pegs can be cleared
+        if (goal_classes[1] == 0) and (board_classes[1] != 0):
+            existC, existD = False, False
+            if (board_classes[2] != 0):
+                v = np.logical_and(np.abs(2 * pegsC[0] - (2 * pegsB[0][:, None] + 1)) <= 2 * board_classes[1],
+                                   np.abs((2 * pegsC[1] + 1) - (2 * pegsB[1][:, None] + 1)) <= 2 * board_classes[0] + 1)
+                existC = np.any(v, axis=1)
+
+            if (board_classes[3] != 0):
+                v = np.logical_and(np.abs(2 * pegsD[1] - (2 * pegsB[1][:, None] + 1)) <= 2 * board_classes[1],
+                                   np.abs((2 * pegsD[0] + 1) - (2 * pegsB[0][:, None] + 1)) <= 2 * board_classes[0] + 1)
+                existD = np.any(v, axis=1)
+
+            if not np.all(np.logical_or(existC, existD)):
+                #print("\n--- can't clear B pegs ---"); print(self); print("---")
                 return True
 
-            # check enough B pegs for vertical distance to C and horizontal distance to D
-            if ((0 if len(goalC[0]) == 0 else np.sum(np.min(np.abs(pegsC[0] - goalC[0][:, None]), axis=1))) +
-                (0 if len(goalD[1]) == 0 else np.sum(np.min(np.abs(pegsD[1] - goalD[1][:, None]), axis=1)))) > board_classes[1]:
+        # check non-goal A pegs can be cleared
+        if (goal_classes[0] == 0) and (board_classes[0] != 0):
+            existC, existD = False, False
+            if (board_classes[2] != 0):
+                v = np.logical_and(np.abs((2 * pegsC[1] + 1) - 2 * pegsA[1][:, None]) <= 2 * board_classes[0],
+                                   np.abs(2 * pegsC[0] - 2 * pegsA[0][:, None]) <= 2 * board_classes[1] + 1)
+                existC = np.any(v, axis=1)
+
+            if (board_classes[3] != 0):
+                v = np.logical_and(np.abs((2 * pegsD[0] + 1) - 2 * pegsA[0][:, None]) <= 2 * board_classes[0],
+                                   np.abs(2 * pegsD[1] - 2 * pegsA[1][:, None]) <= 2 * board_classes[1] + 1)
+                existD = np.any(v, axis=1)
+
+            if not np.all(np.logical_or(existC, existD)):
+                #print("\n--- can't clear A pegs ---"); print(self); print("---")
                 return True
 
         # check phase relations (Beasley, pp. 54--56)
@@ -423,6 +564,20 @@ def getLaTeXGame(game):
     return out_str
 
 
+def expandGame(game):
+    """Expands a game returning all possible next moves."""
+
+    expanded_games = []
+    for i, j in zip(*np.nonzero(game.board == 1)):
+        for d in range(4):
+            # try making a move and add to return list if successful
+            attempt = game.move(i, j, d)
+            if attempt is not None:
+                expanded_games.append(attempt)
+
+    return expanded_games
+
+
 def prioritySearch(init_state=None, goal_state=None, allow_symmetric=True, maxMoves=None):
     """Search for a solution using a priority queue ('frontier') to maintain partial games. Skips any game already
     added to the queue or previously processed from the queue ('seen')."""
@@ -457,28 +612,24 @@ def prioritySearch(init_state=None, goal_state=None, allow_symmetric=True, maxMo
 
         # look for legal moves from the current game
         legalMove = False
-        for i, j in zip(*np.nonzero(game.board == 1)):
-            for d in range(4):
-                # try making a move
-                attempt = game.move(i, j, d)
-                if attempt is not None:
-                    if attempt.is_impossible():
-                        search.movesSkipped += 1
-                    elif attempt in search.seen:
-                        search.movesSkipped += 1
-                    else:
-                        legalMove = True
-                        #score = attempt.bounding_area() - attempt.count
-                        #score = attempt.count
+        for attempt in expandGame(game):
+            if attempt.is_impossible():
+                search.movesSkipped += 1
+            elif attempt in search.seen:
+                search.movesSkipped += 1
+            else:
+                legalMove = True
+                #score = attempt.bounding_area() - attempt.count
+                #score = attempt.count
 
-                        n_i, n_e, n_p = attempt.counts_in_bounding_area()
-                        score = n_e * n_p
+                n_i, n_e, n_p = attempt.counts_in_bounding_area()
+                score = n_e * n_p
 
-                        if (attempt.count - attempt.goal_count <= 3):
-                            score = 0
+                if (attempt.count - attempt.goal_count <= 3):
+                    score = 0
 
-                        heapq.heappush(search.frontier, (int(score), attempt))
-                        search.seen.add(attempt)
+                heapq.heappush(search.frontier, (int(score), attempt))
+                search.seen.add(attempt)
 
         # if a legal move could not be made print some progress statistics and updated the best game found so far
         if not legalMove:
@@ -497,24 +648,35 @@ if __name__ == "__main__":
 
     # testing
     if False:
-        start = GameState.fill(0, 45)
-        start[4, 6] = 1
-        start[4, 4] = 1
-        start[4, 2] = 1
-        start[4, 1] = 1
+        start = GameState.set(GameState.fill(0, 45), ((4, 6), (4, 4), (4, 2), (4, 1), (0, 4), (7, 4)))
+        goal = GameState.set(GameState.fill(0, 45), ((4, 7), (8, 4)))
 
-        start[0, 4] = 1
-        start[7, 4] = 1
+        game = GameState(init_state=start, goal_state=goal, allow_symmetric=False)
+        print(game)
+        print(game.is_impossible())
 
-        goal = GameState.fill(0, 45)
-        goal[4, 7] = 1
-        goal[8, 4] = 1
-
-        game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False)
+        #game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False)
 
         start[0, 4] = 0
         start[6, 4] = 1
-        game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False)
+
+        game = GameState(init_state=start, goal_state=goal, allow_symmetric=False)
+        print(game)
+        print(game.is_impossible())
+
+        #game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=False)
+
+        start = GameState.set(GameState.fill(0, 45), ((3, 2), (3, 5), (4, 4), (5, 2), (5, 8)))
+        goal = GameState.set(GameState.fill(0, 45), ((4, 4),))
+        game = GameState(init_state=start, goal_state=goal, allow_symmetric=False)
+        print(game)
+        print(game.is_impossible())
+
+        start = GameState.set(GameState.fill(0, 45), ((3, 0), (3, 3), (4, 4)))
+        goal = GameState.set(GameState.fill(0, 45), ((4, 4),))
+        game = GameState(init_state=start, goal_state=goal, allow_symmetric=False)
+        print(game)
+        print(game.is_impossible())
 
         exit(0)
 
@@ -529,6 +691,8 @@ if __name__ == "__main__":
             file.write("\n\t" + r"\begin{center} {\Huge 45-Hole Peg Solitaire} \end{center}" + "\n")
             file.write(getLaTeXGame(game))
             file.write(getLaTeXFooter())
+
+        exit(0)
 
     # 33-hole standard game
     if False:
@@ -600,7 +764,7 @@ if __name__ == "__main__":
         exit(0)
 
     # 45-hole single-vacancy games
-    if False:
+    if True:
         filename = "pegs45a.tex"
         print("writing LaTeX to {} ...".format(filename))
         with open(filename, 'wt') as file:
@@ -625,6 +789,8 @@ if __name__ == "__main__":
                     # TODO: show best game found
                     
             file.write(getLaTeXFooter())
+
+        exit(0)
 
     # 33-hole games
     if True:
