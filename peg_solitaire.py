@@ -2,16 +2,16 @@
 # Stephen Gould
 #
 # Indexing (row,col) and classes:
-#
-#                   (0,3) (0,4) (0,5)                                 C A C
-#                   (1,3) (1,4) (1,5)                                 B D B
-#                   (2,3) (2,4) (2,5)                                 C A C
-# (3,0) (3,1) (3,2) (3,3) (3,4) (3,5) (3,6) (3,7) (3,8)         D B D B D B D B D
-# (4,0) (4,1) (4,2) (4,3) (4,4) (4,5) (4,6) (4,7) (4,8)         A C A C A C A C A
-# (5,0) (5,1) (5,2) (5,3) (5,4) (5,5) (5,6) (5,7) (5,8)         D B D B D B D B D
-#                   (6,3) (6,4) (6,5)                                 C A C
-#                   (7,3) (7,4) (7,5)                                 B D B
-#                   (8,3) (8,4) (8,5)                                 C A C
+#                                                               0 1 2 3 4 5 6 7 8
+#                   (0,3) (0,4) (0,5)                        0:       C A C
+#                   (1,3) (1,4) (1,5)                        1:       B D B
+#                   (2,3) (2,4) (2,5)                        2:       C A C
+# (3,0) (3,1) (3,2) (3,3) (3,4) (3,5) (3,6) (3,7) (3,8)      3: D B D B D B D B D
+# (4,0) (4,1) (4,2) (4,3) (4,4) (4,5) (4,6) (4,7) (4,8)      4: A C A C A C A C A
+# (5,0) (5,1) (5,2) (5,3) (5,4) (5,5) (5,6) (5,7) (5,8)      5: D B D B D B D B D
+#                   (6,3) (6,4) (6,5)                        6:       C A C
+#                   (7,3) (7,4) (7,5)                        7:       B D B
+#                   (8,3) (8,4) (8,5)                        8:       C A C
 #
 
 import copy
@@ -252,21 +252,34 @@ class GameState:
         if self.allow_symmetric:
             return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
 
-        # check pegs trapped in top, bottom, left and right 3x3 blocks
+        # UNCOMMENT NEXT LINE TO SKIP ADDITIONAL CHECKS
+        #return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
+
+        # check pegs/holes trapped in top, bottom, left and right 3x3 blocks
+        if board_classes[0] == 0: # no A's
+            if (self.board[1, 4] != self.goal[1, 4]):
+                return True
+            if (self.board[7, 4]  != self.goal[7, 4]):
+                return True
+            if (self.board[4, 1] != self.goal[4, 1]):
+                return True
+            if (self.board[4, 7] != self.goal[4, 7]):
+                return True
+                    
         if board_classes[1] == 0: # no B's
-            if np.any(self.board[0:3:2, 1::2] == 1) and np.all(self.goal[0:3:2, 1::2] != 1):
+            if np.sum(self.board[0:3:2, 1::2] == 1) > np.sum(self.goal[0:3:2, 1::2] == 1):
                 return True
-            if np.any(self.board[6::2, 1::2] == 1) and np.all(self.goal[6::2, 1::2] != 1):
+            if np.sum(self.board[6::2, 1::2] == 1) > np.sum(self.goal[6::2, 1::2] == 1):
                 return True
-            if np.any(self.board[1::2, 0:3:2] == 1) and np.all(self.goal[1::2, 0:3:2] != 1):
+            if np.sum(self.board[1::2, 0:3:2] == 1) > np.sum(self.goal[1::2, 0:3:2] == 1):
                 return True
-            if np.any(self.board[1::2, 6::2] == 1) and np.all(self.goal[1::2, 6::2] != 1):
+            if np.sum(self.board[1::2, 6::2] == 1) > np.sum(self.goal[1::2, 6::2] == 1):
                 return True
 
         if board_classes[2] == 0: # no C's
-            if ((self.board[1, 3] == 1) or (self.board[1, 5] == 1)) and (self.goal[1, 3] != 1) and (self.goal[1, 5] != 1):
+            if np.sum(self.board[1, (3,5)] == 1) != np.sum(self.goal[1, (3,5)] == 1):
                 return True
-            if ((self.board[7, 3] == 1) or (self.board[7, 5] == 1)) and (self.goal[7, 3] != 1) and (self.goal[7, 5] != 1):
+            if np.sum(self.board[7, (3,5)] == 1) != np.sum(self.goal[7, (3,5)] == 1):
                 return True
             if ((self.board[4, 0] == 1) and (self.goal[4, 0] != 1)) or ((self.board[4, 2] == 1) and (self.goal[4, 2] != 1)):
                 return True
@@ -278,15 +291,15 @@ class GameState:
                 return True
             if ((self.board[6, 4] == 1) and (self.goal[6, 4] != 1)) or ((self.board[8, 4] == 1) and (self.goal[8, 4] != 1)):
                 return True
-            if ((self.board[3, 1] == 1) or (self.board[5, 1] == 1)) and (self.goal[3, 1] != 1) and (self.goal[5, 1] != 1):
+            if np.sum(self.board[(3,5), 1] == 1) != np.sum(self.goal[(3,5), 1] == 1):
                 return True
-            if ((self.board[3, 7] == 1) or (self.board[5, 7] == 1)) and (self.goal[3, 7] != 1) and (self.goal[5, 6] != 1):
+            if np.sum(self.board[(3,5), 7] == 1) != np.sum(self.goal[(3,5), 7] == 1):
                 return True
 
         # check class horizontal and vertical distances to goal state
         # e.g., if an A peg is two horizontal jumps an one vertical jump away from the goal then it needs at least two
         # C pegs and one D peg to get there
-        # TODO: why does standard 45-hole game process more moves when aborting on the conditions below?
+        # TODO: why does standard 45-hole game process more moves when aborting on the conditions below? unstable heap?
         # TODO: use hungarian matching for multi-peg goal state to avoid two goal states selecting same nearest peg
 
         # UNCOMMENT NEXT LINE TO SKIP ADDITIONAL CHECKS
@@ -412,7 +425,7 @@ class GameState:
         n_empty = np.sum(self.board[lb[0]:ub[0]+1, lb[1]:ub[1]+1] == 0)
         n_pegs = np.sum(self.board[lb[0]:ub[0]+1, lb[1]:ub[1]+1] == 1)
         return n_illegal, n_empty, n_pegs
-    
+
     def __eq__(self, other):
         """Equality operator. Checks for rotation and reflection symmetries."""
         if (self.count != other.count):
@@ -453,7 +466,7 @@ class SearchState:
             max_game = max([g.count for (s, g) in self.frontier])
         else:
             min_game, max_game = 0, 0
-        print("\rat {}, tried {} moves, skipped {} moves, {} marbles remaining, {:0.3f} IoU, {} games in frontier, {}/{} smallest/biggest game in frontier".format(
+        print("\rat {}, tried {} moves, skipped {} moves, {} marbles remaining, {:0.3f} IoU, {} games in frontier ({}--{} pegs)".format(
                 time.asctime(), self.movesEvaluated, self.movesSkipped, game.count if game else 45, game.iou(), len(self.frontier), min_game, max_game), end="")
 
 
@@ -682,32 +695,37 @@ if __name__ == "__main__":
 
     # 45-hole standard game
     if False:
+        game = prioritySearch(allow_symmetric=False)
+
         filename = "pegs45.tex"
         print("writing LaTeX to {} ...".format(filename))
         with open(filename, 'wt') as file:
             file.write(getLaTeXHeader())
-
-            game = prioritySearch(allow_symmetric=False)
             file.write("\n\t" + r"\begin{center} {\Huge 45-Hole Peg Solitaire} \end{center}" + "\n")
             file.write(getLaTeXGame(game))
             file.write(getLaTeXFooter())
+
+        game_filename = "pegs45.bin"
+        print("writing game to {} ...".format(game_filename))
+        with open(game_filename, 'wb') as file:
+            game.save(file)
 
         exit(0)
 
     # 33-hole standard game
     if False:
+        start = GameState.fill(1, 33)
+        start[4, 4] = 0
+
+        goal = np.where(start == -1, -1, 0)
+        goal[4, 4] = 1
+
+        game = prioritySearch(init_state=start, goal_state=goal, allow_symmetric=True)
+
         filename = "pegs33.tex"
         print("writing LaTeX to {} ...".format(filename))
         with open(filename, 'wt') as file:
             file.write(getLaTeXHeader())
-
-            start = GameState.fill(1, 33)
-            start[4, 4] = 0
-
-            goal = np.where(start == -1, -1, 0)
-            goal[4, 4] = 1
-
-            game = prioritySearch(init_state=start, goal_state=goal)
             file.write("\n\t" + r"\begin{center} {\Huge 33-Hole Peg Solitaire} \end{center}" + "\n")
             file.write(getLaTeXGame(game))
             file.write(getLaTeXFooter())
