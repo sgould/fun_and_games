@@ -159,6 +159,43 @@ class GameState:
         return np.array([nA, nB, nC, nD], dtype=np.int8)
 
     @staticmethod
+    def count_classes_by_zone(board):
+        """Returns the count of classes (A, B, C and D) by zone (North, South, East, West, Centre)."""
+        counts = np.zeros((4, 5), dtype=np.int8)
+
+        # north
+        counts[0, 0] = (1 if board[0, 4] == 1 else 0) + (1 if board[2, 4] == 1 else 0)
+        counts[1, 0] = (1 if board[1, 3] == 1 else 0) + (1 if board[1, 5] == 1 else 0)
+        counts[2, 0] = np.sum(board[0:3:2, 3:6:2] == 1)
+        counts[3, 0] = 1 if board[1, 4] == 1 else 0
+
+        # south
+        counts[0, 1] = (1 if board[6, 4] == 1 else 0) + (1 if board[8, 4] == 1 else 0)
+        counts[1, 1] = (1 if board[7, 3] == 1 else 0) + (1 if board[7, 5] == 1 else 0)
+        counts[2, 1] = np.sum(board[6:9:2, 3:6:2] == 1)
+        counts[3, 1] = 1 if board[7, 4] == 1 else 0
+
+        # east
+        counts[0, 2] = (1 if board[4, 6] == 1 else 0) + (1 if board[4, 8] == 1 else 0)
+        counts[1, 2] = (1 if board[3, 7] == 1 else 0) + (1 if board[5, 7] == 1 else 0)
+        counts[2, 2] = 1 if board[4, 7] == 1 else 0
+        counts[3, 2] = np.sum(board[3:6:2, 6:9:2] == 1)
+
+        # west
+        counts[0, 3] = (1 if board[4, 0] == 1 else 0) + (1 if board[4, 2] == 1 else 0)
+        counts[1, 3] = (1 if board[3, 1] == 1 else 0) + (1 if board[5, 1] == 1 else 0)
+        counts[2, 3] = 1 if board[4, 1] == 1 else 0
+        counts[3, 3] = np.sum(board[3:6:2, 0:3:2] == 1)
+
+        # centre
+        counts[0, 4] = 1 if board[4, 4] == 1 else 0
+        counts[1, 4] = np.sum(board[3:6:2, 3:6:2] == 1)
+        counts[2, 4] = (1 if board[4, 3] == 1 else 0) + (1 if board[4, 5] == 1 else 0)
+        counts[3, 4] = (1 if board[3, 4] == 1 else 0) + (1 if board[5, 4] == 1 else 0)
+
+        return counts
+
+    @staticmethod
     def phase_relations(board):
         """Returns phase relations for pegs along three north-east diagonals and three south-east diagonals. See
         Beasley, The Ins and Outs of Peg Solitaire, Chapter 4."""
@@ -179,7 +216,7 @@ class GameState:
         np.save(fh, self.goal)
         np.save(fh, self.board)
         np.save(fh, self.moves)
-        fh.write((0 if self.allow_symmetric else 1).to_bytes(4, 'big'))
+        fh.write((1 if self.allow_symmetric else 0).to_bytes(4, 'big'))
 
     def load(self, fh):
         """Load state from a given file handle."""
@@ -303,7 +340,7 @@ class GameState:
         # TODO: use hungarian matching for multi-peg goal state to avoid two goal states selecting same nearest peg
 
         # UNCOMMENT NEXT LINE TO SKIP ADDITIONAL CHECKS
-        return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
+        #return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
 
         pegsA = np.nonzero(self.board[0::2, 0::2] == 1)
         pegsB = np.nonzero(self.board[1::2, 1::2] == 1)
@@ -468,6 +505,53 @@ class SearchState:
             min_game, max_game = 0, 0
         print("\rat {}, tried {} moves, skipped {} moves, {} marbles remaining, {:0.3f} IoU, {} games in frontier ({}--{} pegs)".format(
                 time.asctime(), self.movesEvaluated, self.movesSkipped, game.count if game else 45, game.iou(), len(self.frontier), min_game, max_game), end="")
+
+    def write(self, filename):
+        """Write state to file."""
+        with open(filename, 'wb') as file:
+            file.write(self.movesEvaluated.to_bytes(4, 'big'))
+            file.write(self.movesSkipped.to_bytes(4, 'big'))
+            file.write((len(self.frontier)).to_bytes(4, 'big'))
+            for score, game in self.frontier:
+                file.write(score.to_bytes(4, 'big'))
+                game.save(file)
+            file.write((len(self.seen)).to_bytes(4, 'big'))
+            for game in self.seen:
+                game.save(file)
+            if self.bestGameFound is not None:
+                self.bestGameFound.save(file)
+            else:
+                game = GameState()
+                game.save(file)
+
+    def read(self, filename):
+        """Read state from a file."""
+        with (open(filename, 'rb') as file):
+            self.movesEvaluated = int.from_bytes(file.read(4), 'big')
+            self.movesSkipped = int.from_bytes(file.read(4), 'big')
+            n = int.from_bytes(file.read(4), 'big')
+            print("...reading {} frontier games".format(n))
+            self.frontier = []
+            for i in range(n):
+                score = int.from_bytes(file.read(4), 'big')
+                game = GameState()
+                game.load(file)
+                self.frontier.append((score, game))
+
+            n = int.from_bytes(file.read(4), 'big')
+            print("...reading {} seen games".format(n))
+            self.seen = set()
+            for i in range(n):
+                game = GameState()
+                game.load(file)
+                if game in self.seen:
+                    print(game)
+                    assert False
+                self.seen.add(game)
+            assert len(self.seen) == n
+
+            self.bestGameFound = GameState()
+            self.bestGameFound.load(file)
 
 
 def getLaTeXHeader():
@@ -654,7 +738,61 @@ def prioritySearch(init_state=None, goal_state=None, allow_symmetric=True, maxMo
 
     print(game)
     print("...solution found!" if search.bestGameFound.is_solved() else "...not solved!")
+
+    # UNCOMMENT TO SAVE SEARCH STATE
+    #filename = "peg_search_state.bin"
+    #print("writing search state to {} ...".format(filename))
+    #search.write(filename)
+
     return search.bestGameFound
+
+
+def searchAll(init_state=None, goal_state=None, maxMoves=None):
+    """Search for all solutions using a queue ('frontier') to maintain partial games."""
+
+    print("started at {}...".format(time.asctime()))
+
+    # initialize the search state
+    search = SearchState()
+    solutions = []
+    game = GameState(init_state, goal_state, False)
+    print(game)
+    if game.is_impossible():
+        print("...game is impossible!")
+        return solutions
+
+    search.frontier.append((0, game))
+
+    # keep processing partial games in the queue
+    while (len(search.frontier)):
+        search.movesEvaluated += 1
+        _, game = search.frontier.pop()
+
+        # check if the game is solved or maximum number of moves has been reached
+        if game.is_solved():
+            solutions.append(game)
+            search.print(game)
+            print("\n...{}\n".format([(i + 1, j + 1, GameState.dir2str(d)) for i, j, d in game.moves]), end="")
+            print("...{} solutions found so far".format(len(solutions)))
+            continue
+        if (maxMoves is not None) and (search.movesEvaluated >= maxMoves):
+            break
+
+        # look for legal moves from the current game
+        legalMove = False
+        for attempt in expandGame(game):
+            if attempt.is_impossible():
+                search.movesSkipped += 1
+            else:
+                legalMove = True
+                search.frontier.append((0, attempt))
+
+        # if a legal move could not be made print some progress statistics and updated the best game found so far
+        if not legalMove:
+            search.print(game)
+
+    print("...{} total solutions found!".format(len(solutions)))
+    return solutions
 
 
 if __name__ == "__main__":
@@ -693,8 +831,27 @@ if __name__ == "__main__":
 
         exit(0)
 
-    # 45-hole standard game
+    # 33-hole standard game all solutions
     if False:
+        start = GameState.fill(1, 33)
+        start[4, 4] = 0
+
+        goal = np.where(start == -1, -1, 0)
+        goal[4, 4] = 1
+
+        solutions = searchAll(init_state=start, goal_state=goal)
+
+        filename = "solutions33.bin"
+        print("writing {} solutions to {} ...".format(filename))
+        with open(filename, 'wb') as file:
+            file.write((len(solutions)).to_bytes(4, 'big'))
+            for game in solutions:
+                game.save(file)
+
+        exit(0)
+
+    # 45-hole standard game
+    if True:
         game = prioritySearch(allow_symmetric=False)
 
         filename = "pegs45.tex"
