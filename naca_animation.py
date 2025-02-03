@@ -21,9 +21,9 @@ def contour(x, m, p, t):
 
 
 naca_init = np.array((0.02, 0.3, 0.12))
-naca_final = np.array((0.04, 0.40, 0.12))
+naca_final = np.array((0.04, 0.42, 0.12))
 
-t = np.linspace(0.0, 1.0, 30, endpoint=True)
+t = np.linspace(0.0, 1.0, 60, endpoint=True)
 x = np.linspace(0.0, 1.0, 200, endpoint=True)
 
 f = plt.figure()
@@ -31,6 +31,8 @@ f.tight_layout(pad=0)
 
 # generate frames
 print("generating frames...")
+upper0, lower0, curve0 = contour(x, naca_init[0], naca_init[1], naca_init[2])
+
 frames = []
 for ti in t:
     naca = (1.0 - ti) * naca_init + ti * naca_final
@@ -38,6 +40,10 @@ for ti in t:
     upper, lower, curve = contour(x, naca[0], naca[1], naca[2])
 
     plt.gca().clear()
+    plt.plot(x, curve0, 'b--', alpha=0.2)
+    plt.plot(upper0[0,:], upper0[1,:], 'b', alpha=0.2)
+    plt.plot(lower0[0,:], lower0[1,:], 'b', alpha=0.2)
+
     plt.plot(x, curve, 'b--')
     plt.plot(upper[0,:], upper[1,:], 'b')
     plt.plot(lower[0,:], lower[1,:], 'b')

@@ -72,7 +72,7 @@ class GameState:
         assert self.count >= self.goal_count
 
         self.allow_symmetric = allow_symmetric
-        self.moves = np.empty((self.init_count, 3), dtype=np.int8)
+        self.moves = np.empty((self.init_count - self.goal_count, 3), dtype=np.int8)
 
     @staticmethod
     def fill(value = 0, n = 45):
@@ -265,7 +265,7 @@ class GameState:
             return GameState.symmetric_cmp_eq(self.board, self.goal)
         return np.array_equal(self.board, self.goal)
 
-    def is_impossible(self):
+    def is_impossible(self, check_phase_relations=False):
         """Returns True if impossible to solve and False if maybe possible to solve."""
         # check if already solved
         if self.is_solved():
@@ -287,10 +287,10 @@ class GameState:
 
         # TODO: deal with symmetric case later
         if self.allow_symmetric:
-            return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
+            return check_phase_relations and np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
 
         # UNCOMMENT NEXT LINE TO SKIP ADDITIONAL CHECKS
-        #return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
+        #return check_phase_relations and np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
 
         # check pegs/holes trapped in top, bottom, left and right 3x3 blocks
         if board_classes[0] == 0: # no A's
@@ -340,7 +340,7 @@ class GameState:
         # TODO: use hungarian matching for multi-peg goal state to avoid two goal states selecting same nearest peg
 
         # UNCOMMENT NEXT LINE TO SKIP ADDITIONAL CHECKS
-        #return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
+        #return check_phase_relations and np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
 
         pegsA = np.nonzero(self.board[0::2, 0::2] == 1)
         pegsB = np.nonzero(self.board[1::2, 1::2] == 1)
@@ -440,7 +440,7 @@ class GameState:
                 return True
 
         # check phase relations (Beasley, pp. 54--56)
-        return np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
+        return check_phase_relations and np.any(GameState.phase_relations(self.board) != GameState.phase_relations(self.goal))
 
     def iou(self):
         """Returns the intersection over union of the board state and the goal state."""
@@ -685,7 +685,7 @@ def prioritySearch(init_state=None, goal_state=None, allow_symmetric=True, maxMo
     search = SearchState()
     game = GameState(init_state, goal_state, allow_symmetric)
     print(game)
-    if game.is_impossible():
+    if game.is_impossible(check_phase_relations=True):
         print("...game is impossible!")
         return game
 
@@ -757,7 +757,7 @@ def searchAll(init_state=None, goal_state=None, maxMoves=None):
     solutions = []
     game = GameState(init_state, goal_state, False)
     print(game)
-    if game.is_impossible():
+    if game.is_impossible(check_phase_relations=True):
         print("...game is impossible!")
         return solutions
 
@@ -832,7 +832,7 @@ if __name__ == "__main__":
         exit(0)
 
     # 33-hole standard game all solutions
-    if False:
+    if True:
         start = GameState.fill(1, 33)
         start[4, 4] = 0
 
