@@ -1,0 +1,206 @@
+# PEG SWAP PUZZLE
+# Stephen Gould
+#
+#           3               11
+#       1       6       9       14
+#   0       4       8       12      16
+#       2       7       10      15
+#           5               13
+#
+
+import copy
+import numpy as np
+
+RED = 1
+BLACK = -1
+EMPTY = 0
+
+EDGES = ((0, 1), (0, 2), (1, 3), (1, 4), (2, 4), (2, 5), (3, 6), (4, 6), (4, 7), (5, 7), (6, 8), (7, 8),
+         (8, 9), (8, 10), (9, 11), (9, 12), (10, 12), (10, 13), (11, 14), (12, 14), (12, 15), (13, 15), (14, 16), (15, 16))
+
+JUMPS = ((0, 1, 3), (0, 2, 5), (1, 4, 7), (2, 4, 6), (3, 6, 8), (5, 7, 8),
+         (6, 8, 10), (7, 8, 9),
+         (8, 9, 11), (8, 10, 13), (9, 12, 15), (10, 12, 14), (11, 14, 16), (13, 15, 16))
+
+class GameState:
+    """State of the board and update functions."""
+
+    def __init__(self):
+        self.board = np.zeros((17,), dtype=np.int8)
+        self.board[:8] = RED
+        self.board[9:] = BLACK
+
+        self.target = np.zeros((17,), dtype=np.int8)
+        self.target[:8] = BLACK
+        self.target[9:] = RED
+
+        self.history = []
+
+    def move(self, src, dst):
+        """Move a peg."""
+        assert self.board[dst] == EMPTY
+        new_state = copy.deepcopy(self)
+        new_state.board[dst] = self.board[src]
+        new_state.board[src] = EMPTY
+        new_state.history.append(self.board)
+        return new_state
+
+    def is_solved(self):
+        """Returns True if solved and False otherwise."""
+        return np.array_equal(self.board, self.target)
+
+    @staticmethod
+    def peg2str(p):
+        if p == RED:
+            return " R"
+        if p == BLACK:
+            return " B"
+        return " -"
+
+    @staticmethod
+    def board2str(b):
+        pegs = [GameState.peg2str(b[i]) for i in range(17)]
+        str = ""
+        str += "    {}      {}\n".format(pegs[3], pegs[11])
+        str += "  {}  {}  {}  {}\n".format(pegs[1], pegs[6], pegs[9], pegs[14])
+        str += "{}  {}  {}  {}  {}\n".format(pegs[0], pegs[4], pegs[8], pegs[12], pegs[16])
+        str += "  {}  {}  {}  {}\n".format(pegs[2], pegs[7], pegs[10], pegs[15])
+        str += "    {}      {}\n".format(pegs[5], pegs[13])
+        return str
+
+    def __str__(self):
+        return GameState.board2str(self.board)
+
+# ----------------------------------------------------------------------------
+
+def getLaTeXHeader():
+    """Returns header for LaTeX/TikZ source."""
+
+    return r"""\documentclass[10pt,a4paper]{article}        
+    \usepackage{pgfplots}
+    \pgfplotsset{compat=1.5}
+    \usepackage{tikz, tikzscale, ifthen}
+    \usetikzlibrary{arrows.meta}
+
+    \usepackage[cm]{fullpage}
+	\pagenumbering{gobble}
+
+    \begin{document}
+
+        \newcommand{\drawboard}[1]{ % 17-dimensional board array (-1: black, 0: empty, 1: red)
+            \draw [draw=black!50] (-1,-1) rectangle (9,5);
+            \def\x{{0, 1, 1, 2, 2, 2, 3, 3, 4, 5, 5, 6, 6, 6, 7, 7, 8}};
+            \def\y{{2, 3, 1, 4, 2, 0, 3, 1, 2, 3, 1, 4, 2, 0, 3, 1, 2}};
+            \foreach \i in {0,1,...,16}{
+                \pgfmathsetmacro{\value}{int(#1[\i])}
+                \pgfmathparse{\value == -1}\ifdim\pgfmathresult pt>0pt\draw[thin, black!50, fill=black!50] (\x[\i], \y[\i]) circle (3.5mm);\fi
+                \pgfmathparse{\value == 0}\ifdim\pgfmathresult pt>0pt\draw[thin, black!50, fill=black!10] (\x[\i], \y[\i]) circle (3.5mm);\fi
+                \pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\draw[thin, red!50, fill=red!50] (\x[\i], \y[\i]) circle (3.5mm);\fi
+            }
+        }
+
+    """
+
+
+def getLaTeXFooter():
+    """Returns footer for LaTeX/TikZ source."""
+    return r"\end{document}"
+
+
+def getLaTeXGame(game):
+    """Returns the history of game moves as LaTeX/TikZ source."""
+
+    out_str = r"""
+        \vspace*{\fill}
+        \begin{center}
+            \begin{tikzpicture}[scale=0.25]
+    """
+
+    boards = copy.deepcopy(game.history)
+    boards.append(game.board)
+
+    for i in range(len(boards)):
+        board_string = r"{" + ", ".join([str(boards[i][j]) for j in range(17)]) + r"}"
+
+        out_str += "\t\\begin{{scope}}[xshift={}cm, yshift={}cm]\n".format(12*(i % 5), -8 * int(i / 5))
+        out_str += "\t\t\\drawboard{" + board_string + "};\n"
+        out_str += "\t\\end{scope}\n"
+
+    out_str += r"""
+            \end{tikzpicture}
+        \end{center}
+        \vspace*{\fill}    
+    """
+
+    return out_str
+
+
+# ----------------------------------------------------------------------------
+
+if __name__ == "__main__":
+
+    # initialise search
+    frontier = [GameState()]
+    count = 0
+    solutions = {}
+    bestSolutionFound = None
+    bestSolutionMoves = np.inf
+
+    # force first two moves
+    if True:
+        frontier[0] = frontier[0].move(10, 8)
+        frontier[0] = frontier[0].move(6, 10)
+
+    # search for best solution
+    while (len(frontier)):
+        state = frontier.pop()
+        count += 1
+        print("\r...{} ({})".format(count, len(frontier)), end="")
+
+        numMoves = len(state.history) + 1
+        #minMovesToGo = max(np.count_nonzero(state.board != state.target) - 1, 0)
+        #if numMoves + minMovesToGo >= bestSolutionMoves:
+        #    continue
+
+        if state.is_solved():
+            if numMoves < bestSolutionMoves:
+                bestSolutionFound = state
+                bestSolutionMoves = numMoves
+            if numMoves not in solutions:
+                solutions[numMoves] = state
+                print("\nsolution found with {} moves".format(numMoves))
+
+            if numMoves == 47:
+                break
+            continue
+
+        for u, v in EDGES:
+            if (state.board[u] == RED) and (state.board[v] == EMPTY):
+                frontier.append(state.move(u, v))
+
+            if (state.board[u] == EMPTY) and (state.board[v] == BLACK):
+                frontier.append(state.move(v, u))
+
+        for u, v, w in JUMPS:
+            if (state.board[u] == RED) and (state.board[v] == BLACK) and (state.board[w] == EMPTY):
+                frontier.append(state.move(u, w))
+
+            if (state.board[u] == EMPTY) and (state.board[v] == RED) and (state.board[w] == BLACK):
+                frontier.append(state.move(w, u))
+
+    # print out best solution found
+    assert bestSolutionFound is not None
+    print("\n")
+    print("\n".join(GameState.board2str(s) for s in bestSolutionFound.history))
+    print(bestSolutionFound)
+
+    # write out LaTeX of solutions
+    filename = "peg_swap.tex"
+    print("writing LaTeX to {} ...".format(filename))
+    with open(filename, 'wt') as file:
+        file.write(getLaTeXHeader())
+        for numMoves in reversed(sorted(solutions.keys())):
+            file.write("\n\t" + r"\begin{center} {\Huge " + str(numMoves) + r"-Move Solution} \end{center}" + "\n")
+            file.write(getLaTeXGame(solutions[numMoves]))
+            file.write("\n\t\t" + r"\newpage" + "\n")
+        file.write(getLaTeXFooter())
