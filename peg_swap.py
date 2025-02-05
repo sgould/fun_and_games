@@ -170,12 +170,12 @@ if __name__ == "__main__":
     while (len(frontier)):
         state = frontier.pop()
         numStatesExplored += 1
-        if numStatesExplored % 1000 == 0:
+        if numStatesExplored % 5000 == 0:
             print("\r...{} ({}, {})".format(numStatesExplored, numSolutionsFound, len(frontier)), end="")
 
         if state.is_solved():
             numSolutionsFound += 1
-            numMoves = len(state.history) + 1
+            numMoves = len(state.history)
             if numMoves < bestSolutionMoves:
                 bestSolutionFound = state
                 bestSolutionMoves = numMoves
