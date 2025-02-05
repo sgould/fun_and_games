@@ -22,6 +22,21 @@ JUMPS = ((0, 1, 3), (0, 2, 5), (1, 4, 7), (2, 4, 6), (3, 6, 8), (5, 7, 8),
          (6, 8, 10), (7, 8, 9),
          (8, 9, 11), (8, 10, 13), (9, 12, 15), (10, 12, 14), (11, 14, 16), (13, 15, 16))
 
+EDGES_R = [() for i in range(17)]
+EDGES_B = [() for i in range(17)]
+JUMPS_R = [() for i in range(17)]
+JUMPS_B = [() for i in range(17)]
+
+for i in range(17):
+    EDGES_R[i] = tuple(m for m in EDGES if m[1] == i)
+    EDGES_B[i] = tuple(m for m in EDGES if m[0] == i)
+    JUMPS_R[i] = tuple(m for m in JUMPS if m[2] == i)
+    JUMPS_B[i] = tuple(m for m in JUMPS if m[0] == i)
+
+TARGET = np.zeros((17,), dtype=np.int8)
+TARGET[:8] = BLACK
+TARGET[9:] = RED
+
 class GameState:
     """State of the board and update functions."""
 
@@ -29,10 +44,7 @@ class GameState:
         self.board = np.zeros((17,), dtype=np.int8)
         self.board[:8] = RED
         self.board[9:] = BLACK
-
-        self.target = np.zeros((17,), dtype=np.int8)
-        self.target[:8] = BLACK
-        self.target[9:] = RED
+        self.free_peg = 8
 
         self.history = []
 
@@ -43,11 +55,12 @@ class GameState:
         new_state.board[dst] = self.board[src]
         new_state.board[src] = EMPTY
         new_state.history.append(self.board)
+        new_state.free_peg = src
         return new_state
 
     def is_solved(self):
         """Returns True if solved and False otherwise."""
-        return np.array_equal(self.board, self.target)
+        return np.array_equal(self.board, TARGET)
 
     @staticmethod
     def peg2str(p):
@@ -141,28 +154,28 @@ if __name__ == "__main__":
 
     # initialise search
     frontier = [GameState()]
-    count = 0
+    numStatesExplored = 0
     solutions = {}
+    numSolutionsFound = 0
     bestSolutionFound = None
     bestSolutionMoves = np.inf
 
-    # force first two moves
+    # force first three moves
     if True:
         frontier[0] = frontier[0].move(10, 8)
         frontier[0] = frontier[0].move(6, 10)
+        frontier[0] = frontier[0].move(8, 6)
 
     # search for best solution
     while (len(frontier)):
         state = frontier.pop()
-        count += 1
-        print("\r...{} ({})".format(count, len(frontier)), end="")
-
-        numMoves = len(state.history) + 1
-        #minMovesToGo = max(np.count_nonzero(state.board != state.target) - 1, 0)
-        #if numMoves + minMovesToGo >= bestSolutionMoves:
-        #    continue
+        numStatesExplored += 1
+        if numStatesExplored % 1000 == 0:
+            print("\r...{} ({}, {})".format(numStatesExplored, numSolutionsFound, len(frontier)), end="")
 
         if state.is_solved():
+            numSolutionsFound += 1
+            numMoves = len(state.history) + 1
             if numMoves < bestSolutionMoves:
                 bestSolutionFound = state
                 bestSolutionMoves = numMoves
@@ -170,10 +183,11 @@ if __name__ == "__main__":
                 solutions[numMoves] = state
                 print("\nsolution found with {} moves".format(numMoves))
 
-            if numMoves == 47:
-                break
+            #if numMoves == 47:
+            #    break
             continue
 
+        """
         for u, v in EDGES:
             if (state.board[u] == RED) and (state.board[v] == EMPTY):
                 frontier.append(state.move(u, v))
@@ -187,12 +201,35 @@ if __name__ == "__main__":
 
             if (state.board[u] == EMPTY) and (state.board[v] == RED) and (state.board[w] == BLACK):
                 frontier.append(state.move(w, u))
+        """
 
-    # print out best solution found
+        for u, v in EDGES_R[state.free_peg]:
+            if (state.board[u] == RED):
+                frontier.append(state.move(u, v))
+
+        for u, v in EDGES_B[state.free_peg]:
+            if (state.board[v] == BLACK):
+                frontier.append(state.move(v, u))
+
+        for u, v, w in JUMPS_R[state.free_peg]:
+            if (state.board[u] == RED) and (state.board[v] == BLACK):
+                frontier.append(state.move(u, w))
+
+        for u, v, w in JUMPS_B[state.free_peg]:
+            if (state.board[v] == RED) and (state.board[w] == BLACK):
+                frontier.append(state.move(w, u))
+
+    # print out the best solution found
     assert bestSolutionFound is not None
     print("\n")
     print("\n".join(GameState.board2str(s) for s in bestSolutionFound.history))
     print(bestSolutionFound)
+    print("\n")
+
+    # print out statistics
+    print("{} states explored".format(numStatesExplored))
+    print("{} solutions found".format(numSolutionsFound))
+    print("{} moves in best solution".format(bestSolutionMoves))
 
     # write out LaTeX of solutions
     filename = "peg_swap.tex"
