@@ -46,21 +46,33 @@ class GameState:
         self.board[9:] = BLACK
         self.free_peg = 8
 
-        self.history = []
+        self.num_moves = 0
+        self.prev_state = None
 
     def move(self, src, dst):
         """Move a peg."""
         assert self.board[dst] == EMPTY
-        new_state = copy.deepcopy(self)
+        new_state = copy.copy(self)
+        new_state.board = copy.deepcopy(self.board)
         new_state.board[dst] = self.board[src]
         new_state.board[src] = EMPTY
-        new_state.history.append(self.board)
         new_state.free_peg = src
+        new_state.num_moves += 1
+        new_state.prev_state = self
         return new_state
 
     def is_solved(self):
         """Returns True if solved and False otherwise."""
         return np.array_equal(self.board, TARGET)
+
+    def history(self):
+        """Return trace of moves."""
+        trace = [self.board]
+        game = self.prev_state
+        while (game is not None):
+            trace.insert(0, game.board)
+            game = game.prev_state
+        return trace
 
     @staticmethod
     def peg2str(p):
@@ -129,9 +141,7 @@ def getLaTeXGame(game):
             \begin{tikzpicture}[scale=0.25]
     """
 
-    boards = copy.deepcopy(game.history)
-    boards.append(game.board)
-
+    boards = game.history()
     for i in range(len(boards)):
         board_string = r"{" + ", ".join([str(boards[i][j]) for j in range(17)]) + r"}"
 
@@ -164,7 +174,7 @@ if __name__ == "__main__":
     if True:
         frontier[0] = frontier[0].move(10, 8)
         frontier[0] = frontier[0].move(6, 10)
-        frontier[0] = frontier[0].move(8, 6)
+        #frontier[0] = frontier[0].move(8, 6)
 
     # search for best solution
     while (len(frontier)):
@@ -175,15 +185,15 @@ if __name__ == "__main__":
 
         if state.is_solved():
             numSolutionsFound += 1
-            numMoves = len(state.history)
-            if numMoves < bestSolutionMoves:
+            if state.num_moves < bestSolutionMoves:
                 bestSolutionFound = state
-                bestSolutionMoves = numMoves
-            if numMoves not in solutions:
-                solutions[numMoves] = state
-                print("\nsolution found with {} moves".format(numMoves))
+                bestSolutionMoves = state.num_moves
+            if state.num_moves not in solutions:
+                solutions[state.num_moves] = state
+                print("\r...{} ({}, {})".format(numStatesExplored, numSolutionsFound, len(frontier)), end="")
+                print("\nsolution found with {} moves".format(state.num_moves))
 
-            #if numMoves == 47:
+            #if state.num_moves == 46:
             #    break
             continue
 
@@ -222,9 +232,7 @@ if __name__ == "__main__":
     # print out the best solution found
     assert bestSolutionFound is not None
     print("\n")
-    print("\n".join(GameState.board2str(s) for s in bestSolutionFound.history))
-    print(bestSolutionFound)
-    print("\n")
+    print("\n".join(GameState.board2str(s) for s in bestSolutionFound.history()))
 
     # print out statistics
     print("{} states explored".format(numStatesExplored))
