@@ -1,6 +1,13 @@
 # PEG SWAP PUZZLE
 # Stephen Gould
 #
+# There are many variants of peg puzzles. In this one, the goal is to swap the positions of the red and black pegs. Red
+# pegs can only move right, and black pegs can only move left. A peg can move into an adjacent hole if it is empty. Pegs
+# can also jump a single different-coloured peg to move into an empty hole.
+#
+# There are over 19M solutions (excluding first-move symmetries) ranging from 46 moves to 58 moves. This code finds an
+# example of each.
+#
 #           3               11
 #       1       6       9       14
 #   0       4       8       12      16
@@ -68,11 +75,13 @@ class GameState:
     def history(self):
         """Return trace of moves."""
         trace = [self.board]
+        moves = [(self.free_peg, self.free_peg)]
         game = self.prev_state
         while (game is not None):
             trace.insert(0, game.board)
+            moves.insert(0, (moves[0][1], game.free_peg))
             game = game.prev_state
-        return trace
+        return trace, moves
 
     @staticmethod
     def peg2str(p):
@@ -112,16 +121,18 @@ def getLaTeXHeader():
 
     \begin{document}
 
-        \newcommand{\drawboard}[1]{ % 17-dimensional board array (-1: black, 0: empty, 1: red)
+        \def\px{{0, 1, 1, 2, 2, 2, 3, 3, 4, 5, 5, 6, 6, 6, 7, 7, 8}}
+		\def\py{{2, 3, 1, 4, 2, 0, 3, 1, 2, 3, 1, 4, 2, 0, 3, 1, 2}}
+        \newcommand{\drawboard}[3]{ % 17-dimensional board array (-1: black, 0: empty, 1: red), source, target
             \draw [draw=black!50] (-1,-1) rectangle (9,5);
-            \def\x{{0, 1, 1, 2, 2, 2, 3, 3, 4, 5, 5, 6, 6, 6, 7, 7, 8}};
-            \def\y{{2, 3, 1, 4, 2, 0, 3, 1, 2, 3, 1, 4, 2, 0, 3, 1, 2}};
             \foreach \i in {0,1,...,16}{
+            	\node[minimum size=1.75mm, inner sep=0pt, circle] (\i) at (\px[\i], \py[\i]) {};
                 \pgfmathsetmacro{\value}{int(#1[\i])}
-                \pgfmathparse{\value == -1}\ifdim\pgfmathresult pt>0pt\draw[thin, black!50, fill=black!50] (\x[\i], \y[\i]) circle (3.5mm);\fi
-                \pgfmathparse{\value == 0}\ifdim\pgfmathresult pt>0pt\draw[thin, black!50, fill=black!10] (\x[\i], \y[\i]) circle (3.5mm);\fi
-                \pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\draw[thin, red!50, fill=red!50] (\x[\i], \y[\i]) circle (3.5mm);\fi
+                \pgfmathparse{\value == -1}\ifdim\pgfmathresult pt>0pt\draw[thin, black!50, fill=black!50] (\i) circle (3.5mm);\fi
+                \pgfmathparse{\value == 0}\ifdim\pgfmathresult pt>0pt\draw[thin, black!50, fill=black!10] (\i) circle (3.5mm);\fi
+                \pgfmathparse{\value == 1}\ifdim\pgfmathresult pt>0pt\draw[thin, red!50, fill=red!50] (\i) circle (3.5mm);\fi
             }
+			\ifthenelse{\equal{#2}{#3}}{}{\draw (#2) to[bend right=45] (#3)};
         }
 
     """
@@ -133,7 +144,7 @@ def getLaTeXFooter():
 
 
 def getLaTeXGame(game):
-    """Returns the history of game moves as LaTeX/TikZ source."""
+    """Returns the game moves as LaTeX/TikZ source."""
 
     out_str = r"""
         \vspace*{\fill}
@@ -141,12 +152,12 @@ def getLaTeXGame(game):
             \begin{tikzpicture}[scale=0.25]
     """
 
-    boards = game.history()
+    boards, moves = game.history()
     for i in range(len(boards)):
         board_string = r"{" + ", ".join([str(boards[i][j]) for j in range(17)]) + r"}"
 
         out_str += "\t\\begin{{scope}}[xshift={}cm, yshift={}cm]\n".format(12*(i % 5), -8 * int(i / 5))
-        out_str += "\t\t\\drawboard{" + board_string + "};\n"
+        out_str += "\t\t\\drawboard{" + board_string + "}}{{{}}}{{{}}};\n".format(moves[i][0], moves[i][1])
         out_str += "\t\\end{scope}\n"
 
     out_str += r"""
@@ -174,7 +185,7 @@ if __name__ == "__main__":
     if True:
         frontier[0] = frontier[0].move(10, 8)
         frontier[0] = frontier[0].move(6, 10)
-        #frontier[0] = frontier[0].move(8, 6)
+        frontier[0] = frontier[0].move(8, 6)
 
     # search for best solution
     while (len(frontier)):
@@ -232,7 +243,8 @@ if __name__ == "__main__":
     # print out the best solution found
     assert bestSolutionFound is not None
     print("\n")
-    print("\n".join(GameState.board2str(s) for s in bestSolutionFound.history()))
+    boards, moves = bestSolutionFound.history()
+    print("\n".join(GameState.board2str(b) for b in boards))
 
     # print out statistics
     print("{} states explored".format(numStatesExplored))
