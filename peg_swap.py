@@ -2,8 +2,8 @@
 # Stephen Gould
 #
 # There are many variants of peg puzzles. In this one, the goal is to swap the positions of the red and black pegs. Red
-# pegs can only move right, and black pegs can only move left. A peg can move into an adjacent hole if it is empty. Pegs
-# can also jump a single different-coloured peg to move into an empty hole.
+# pegs can only move to the right, and black pegs can only move to the left. A peg can move into an adjacent hole if it
+# is empty. Pegs can also jump a single peg of a different colour to move into an empty hole.
 #
 # There are over 19M solutions (excluding first-move symmetries) ranging from 46 moves to 58 moves. This code finds an
 # example of each.
@@ -296,17 +296,19 @@ if __name__ == "__main__":
     boards, moves = bestSolutionFound.history()
     print("\n".join(GameState.board2str(b) for b in boards))
 
-    # create animated gif of best solution
-    filename = "peg_swap_{}.gif".format(bestSolutionMoves)
-    print("writing animated GIF to {} ...".format(filename))
-    moves[-1] = None
-    frames = [getBoardAsImage(b, m) for b, m in zip(boards, moves)]
-    imageio.mimsave(filename, frames, duration=0.5)
-
     # print out statistics
     print("{} states explored".format(numStatesExplored))
     print("{} solutions found".format(numSolutionsFound))
     print("{} moves in best solution".format(bestSolutionMoves))
+
+    # write animated gif for each solution
+    for numMoves in solutions.keys():
+        filename = "peg_swap_{}.gif".format(numMoves)
+        print("writing animated GIF to {} ...".format(filename))
+        boards, moves = solutions[numMoves].history()
+        moves[-1] = None
+        frames = [getBoardAsImage(b, m) for b, m in zip(boards, moves)]
+        imageio.mimsave(filename, frames, duration=0.5)
 
     # write out LaTeX of solutions
     filename = "peg_swap.tex"
