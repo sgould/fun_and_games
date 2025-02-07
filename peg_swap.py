@@ -18,6 +18,10 @@
 import copy
 import numpy as np
 
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import imageio
+
 RED = 1
 BLACK = -1
 EMPTY = 0
@@ -153,6 +157,7 @@ def getLaTeXGame(game):
     """
 
     boards, moves = game.history()
+    moves = moves[-1:] + moves[:-1]
     for i in range(len(boards)):
         board_string = r"{" + ", ".join([str(boards[i][j]) for j in range(17)]) + r"}"
 
@@ -167,6 +172,51 @@ def getLaTeXGame(game):
     """
 
     return out_str
+
+
+def getBoardAsImage(board, move=None, dpi=80):
+    """Renders the board as a three channel image."""
+
+    # create figure
+    f = plt.figure(figsize=(10,6), dpi=dpi)
+    f.tight_layout(pad=0)
+    ax = f.gca()
+    ax.set_position([0, 0, 1, 1])
+    ax.set_xlim((-1, 9))
+    ax.set_ylim((-1, 5))
+    ax.set_axis_off()
+
+    # draw board state
+    px = [0, 1, 1, 2, 2, 2, 3, 3, 4, 5, 5, 6, 6, 6, 7, 7, 8]
+    py = [2, 3, 1, 4, 2, 0, 3, 1, 2, 3, 1, 4, 2, 0, 3, 1, 2]
+
+    for i in range(17):
+        if board[i] == 1:
+            fill = (1.0, 0.5, 0.5)
+            edge = (1.0, 0.5, 0.5)
+        elif board[i] == -1:
+            fill = (0.5, 0.5, 0.5)
+            edge = (0.5, 0.5, 0.5)
+        else:
+            fill = (0.9, 0.9, 0.9)
+            edge = (0.5, 0.5, 0.5)
+
+        c = plt.Circle((px[i], py[i]), 0.35, edgecolor=edge, facecolor=fill, fill=True)
+        ax.add_patch(c)
+
+    if move is not None:
+        a = patches.FancyArrowPatch((px[move[0]], py[move[0]]), (px[move[1]], py[move[1]]),
+            arrowstyle="Simple, tail_width=0.5, head_width=4, head_length=8",
+            connectionstyle="arc3,rad=.5", facecolor='k', edgecolor='k')
+        ax.add_patch(a)
+
+    # grab figure as an image
+    f.canvas.draw()
+    img = np.frombuffer(f.canvas.tostring_rgb(), dtype=np.uint8)
+    img = img.reshape(f.canvas.get_width_height()[::-1] + (3,))
+    plt.close(f)
+
+    return img
 
 
 # ----------------------------------------------------------------------------
@@ -245,6 +295,13 @@ if __name__ == "__main__":
     print("\n")
     boards, moves = bestSolutionFound.history()
     print("\n".join(GameState.board2str(b) for b in boards))
+
+    # create animated gif of best solution
+    filename = "peg_swap_{}.gif".format(bestSolutionMoves)
+    print("writing animated GIF to {} ...".format(filename))
+    moves[-1] = None
+    frames = [getBoardAsImage(b, m) for b, m in zip(boards, moves)]
+    imageio.mimsave(filename, frames, duration=0.5)
 
     # print out statistics
     print("{} states explored".format(numStatesExplored))
