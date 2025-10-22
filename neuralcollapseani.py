@@ -8,15 +8,17 @@ import cv2
 
 
 N, K, D = 100, 3, 2
-COLOURS = ('b', 'r', 'g')
-MARKERS = ('o', '^', 'd')
+COLOURS = ('b', 'r', 'g', 'm')
+MARKERS = ('o', '^', 'd', 's')
+#VID_FILENAME = "neural_collapse.mp4"
+VID_FILENAME = None
 
 
 def visualize_state(X_init, X_curr, A_curr, loss_curve, fig=None):
     """Visualize classifier state."""
 
     if fig is None:
-        fig = plt.figure(figsize=(16, 9), dpi=150)
+        fig = plt.figure(figsize=(16, 9), dpi=150 if VID_FILENAME else 75)
         fig.tight_layout(pad=0)
 
     plt.subplot(1, 2, 1)
@@ -71,20 +73,24 @@ for i in range(max_iters):
     optimizer.step()
 
     # visualize optimization state
-    fig = visualize_state(X_init, X.detach().numpy(), theta[1].detach().numpy(), loss_curve, fig)
-    fig.canvas.draw()
-    img = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
-    img = img.reshape(fig.canvas.get_width_height()[::-1] + (4,))
+    if VID_FILENAME:
+        fig = visualize_state(X_init, X.detach().numpy(), theta[1].detach().numpy(), loss_curve, fig)
+        fig.canvas.draw()
+        img = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
+        img = img.reshape(fig.canvas.get_width_height()[::-1] + (4,))
 
-    # write video frame
-    if video is None:
-        width, height, _ = img.shape
-        fourcc = cv2.VideoWriter_fourcc(*'h264')
-        video = cv2.VideoWriter("neural_collapse.mp4", fourcc, 30, (height, width))
+        # write video frame
+        if video is None:
+            width, height, _ = img.shape
+            fourcc = cv2.VideoWriter_fourcc(*'h264')
+            video = cv2.VideoWriter(VID_FILENAME, fourcc, 30, (height, width))
 
-    video.write(img[:, :, 1:4])
+        video.write(img[:, :, 1:4])
+
+if video:
+    video.release()
 
 # show last frame
-video.release()
+visualize_state(X_init, X.detach().numpy(), theta[1].detach().numpy(), loss_curve, fig)
 plt.show()
 
