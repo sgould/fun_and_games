@@ -14,13 +14,12 @@ app_wnd.withdraw() # hide application window
 FILE_IN = tk.filedialog.askopenfilename(title="Open Video", filetypes=(("Video Files", ("*.mp4", "*.avi")), ("All Files", "*.*")))
 if not FILE_IN: exit(0)
 
+SKIPFRAMES = 25*1  # skip duration in number of frames
 
-FILE_OUT = os.path.join(os.path.dirname(FILE_IN), os.path.splitext(os.path.basename(FILE_IN))[0] + "_motion.mp4")
+FILE_OUT = os.path.join(os.path.dirname(FILE_IN), os.path.splitext(os.path.basename(FILE_IN))[0] + "_motion_{}.mp4".format(SKIPFRAMES))
 
 print("reading from {}".format(FILE_IN))
 print("writing to {}".format(FILE_OUT))
-
-SKIPFRAMES = 30*5  # skip duration in number of frames
 
 cap = cv2.VideoCapture(FILE_IN)
 if not cap.isOpened(): exit(0)
