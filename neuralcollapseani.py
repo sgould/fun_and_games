@@ -6,15 +6,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 
+plt.rcParams.update({'font.size': 16})
 
 N, K, D = 100, 3, 2
 COLOURS = ('b', 'r', 'g', 'm')
 MARKERS = ('o', '^', 'd', 's')
-#VID_FILENAME = "neural_collapse.mp4"
-VID_FILENAME = None
+LINE_STYLES = ('k--', 'k-.')
+
+VID_FILENAME = r"neural_collapse_{}.mp4"
+#VID_FILENAME = None
 
 
-def visualize_state(X_init, X_curr, A_curr, loss_curve, fig=None):
+def visualize_state(X_init, y, X_curr, A_curr, loss_curve, fig=None):
     """Visualize classifier state."""
 
     if fig is None:
@@ -47,50 +50,80 @@ def visualize_state(X_init, X_curr, A_curr, loss_curve, fig=None):
 
 import torch
 
-# initial data
-X_init = np.random.randn(N, D)
-y = np.random.randint(low=0, high=K, size=N)
 
-# unconstrained feature model
-target = torch.tensor(y, dtype=torch.long)
-X = torch.tensor(X_init, dtype=torch.float).clone().detach().requires_grad_(True)
-classifier = torch.nn.Linear(D, K, bias=True)
-theta = [torch.nn.Parameter(X), *classifier.parameters()]
-optimizer = torch.optim.AdamW(theta, lr=0.05)
+def animate_training(filename=None, fig=None, rnd_seed=22, max_iters=1000, A_init=None, ref_losses=[]):
+    """Complete a training run. Generate video if `filename` is provided."""
 
-# animate optimization
-fig, video = None, None
-max_iters = 1000
-loss_curve = [None for i in range(max_iters)]
-for i in range(max_iters):
-    print("\r...{} of {}".format(i + 1, max_iters), end='')
+    # initialize data
+    np.random.seed(rnd_seed)
+    torch.random.manual_seed(rnd_seed)
+    X_init = np.random.randn(N, D)
+    y = np.random.randint(low=0, high=K, size=N)
 
-    # do optimization step
-    optimizer.zero_grad()
-    loss = torch.nn.functional.cross_entropy(classifier(theta[0]), target)
-    loss_curve[i] = loss.item()
-    loss.backward()
-    optimizer.step()
+    # unconstrained feature model
+    target = torch.tensor(y, dtype=torch.long)
+    X = torch.tensor(X_init, dtype=torch.float).clone().detach().requires_grad_(True)
+    classifier = torch.nn.Linear(D, K, bias=True)
+    if A_init is None:
+        theta = [torch.nn.Parameter(X), *classifier.parameters()]
+    else:
+        theta = [torch.nn.Parameter(X)]
+        with torch.no_grad():
+            classifier.weight.copy_(torch.tensor(A_init))
+            classifier.bias.copy_(torch.zeros_like(classifier.bias))
 
-    # visualize optimization state
-    if VID_FILENAME:
-        fig = visualize_state(X_init, X.detach().numpy(), theta[1].detach().numpy(), loss_curve, fig)
-        fig.canvas.draw()
-        img = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
-        img = img.reshape(fig.canvas.get_width_height()[::-1] + (4,))
+    optimizer = torch.optim.AdamW(theta, lr=0.05)
 
-        # write video frame
-        if video is None:
-            width, height, _ = img.shape
-            fourcc = cv2.VideoWriter_fourcc(*'h264')
-            video = cv2.VideoWriter(VID_FILENAME, fourcc, 30, (height, width))
+    # animate optimization
+    video = None
+    loss_curve = [None for i in range(max_iters)]
+    for i in range(max_iters):
+        print("\r...{} of {}".format(i + 1, max_iters), end='')
 
-        video.write(img[:, :, 1:4])
+        # do optimization step
+        optimizer.zero_grad()
+        loss = torch.nn.functional.cross_entropy(classifier(theta[0]), target)
+        loss_curve[i] = loss.item()
+        loss.backward()
+        optimizer.step()
 
-if video:
-    video.release()
+        # visualize optimization state
+        if filename:
+            fig = visualize_state(X_init, y, X.detach().numpy(), theta[1].detach().numpy() if A_init is None else A_init, loss_curve, fig)
+            for i in range(len(ref_losses)):
+                plt.semilogy(ref_losses[i], LINE_STYLES[i])
+            fig.canvas.draw()
+            img = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
+            img = img.reshape(fig.canvas.get_width_height()[::-1] + (4,))
 
-# show last frame
-visualize_state(X_init, X.detach().numpy(), theta[1].detach().numpy(), loss_curve, fig)
+            # write video frame
+            if video is None:
+                width, height, _ = img.shape
+                fourcc = cv2.VideoWriter_fourcc(*'h264')
+                video = cv2.VideoWriter(filename, fourcc, 30, (height, width))
+
+            video.write(img[:, :, 1:4])
+
+    if video:
+        video.release()
+
+    # show last frame
+    fig = visualize_state(X_init, y, X.detach().numpy(), theta[1].detach().numpy() if A_init is None else A_init, loss_curve, fig)
+    for i in range(len(ref_losses)):
+        plt.semilogy(ref_losses[i], LINE_STYLES[i])
+    return fig, loss_curve
+
+
+# training run with free classifier
+filename = VID_FILENAME.format("free") if VID_FILENAME else None
+fig, loss_free = animate_training(filename)
+
+# training with fixed classifier
+filename = VID_FILENAME.format("fixed") if VID_FILENAME else None
+A_init = 2.0 * np.array([[-0.71, 0.71], [-0.71, -0.71], [1.0, 0.0]])
+fig, loss_fixed = animate_training(filename, fig=None, A_init = A_init, ref_losses=[loss_free])
+plt.legend(['fixed', 'free'])
+
+# pause to show figures
 plt.show()
 
