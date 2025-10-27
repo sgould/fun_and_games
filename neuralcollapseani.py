@@ -14,7 +14,44 @@ MARKERS = ('o', '^', 'd', 's')
 LINE_STYLES = ('k--', 'k-.')
 
 VID_FILENAME = r"neural_collapse_{}.mp4"
-#VID_FILENAME = None
+VID_FILENAME = None
+
+
+def etf_projection_2d(X, y):
+    """Solve for nearest ETF to class means."""
+    assert D == 2
+
+    # compute class means
+    mu = np.empty((K, D), dtype=X.dtype)
+    std = np.empty((K, D), dtype=X.dtype)
+    for k in range(K):
+        mu[k, :] = np.mean(X[y == k, :], axis=0)
+        std[k, :] = np.std(X[y == k, :], axis=0)
+    mu = mu - np.mean(mu, axis=0, keepdims=True)
+
+    scale = 1.0 / (np.mean(np.linalg.norm(std, axis=1)) + 1.0e-6)
+    #mu = mu / np.linalg.norm(mu, axis=1, keepdims=True)
+    #mu = mu / np.linalg.norm(mu)
+
+    # search for best matching etf
+    etf_init = np.array([[-0.5, 0.866], [-0.5, -0.866], [1.0, 0.0]])
+
+    etf_best, etf_best_cost = etf_init, np.inf
+    for theta in np.linspace(0.0, 2.0 * np.pi, 100):
+        R = np.array([[np.cos(theta), -1.0 * np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+        etf = etf_init @ R
+        cost = np.sum(np.square(etf - mu))
+        if cost < etf_best_cost:
+            etf_best = etf
+            etf_best_cost = cost
+
+        etf *= -1.0
+        cost = np.sum(np.square(etf - mu))
+        if cost < etf_best_cost:
+            etf_best = etf
+            etf_best_cost = cost
+
+    return scale * etf_best / np.linalg.norm(etf_best)
 
 
 def visualize_state(X_init, y, X_curr, A_curr, loss_curve, fig=None):
@@ -51,7 +88,7 @@ def visualize_state(X_init, y, X_curr, A_curr, loss_curve, fig=None):
 import torch
 
 
-def animate_training(filename=None, fig=None, rnd_seed=22, max_iters=1000, A_init=None, ref_losses=[]):
+def animate_training(filename=None, fig=None, rnd_seed=22, max_iters=1000, A_init=None, proj=False, ref_losses=[]):
     """Complete a training run. Generate video if `filename` is provided."""
 
     # initialize data
@@ -64,6 +101,12 @@ def animate_training(filename=None, fig=None, rnd_seed=22, max_iters=1000, A_ini
     target = torch.tensor(y, dtype=torch.long)
     X = torch.tensor(X_init, dtype=torch.float).clone().detach().requires_grad_(True)
     classifier = torch.nn.Linear(D, K, bias=True)
+    if proj and A_init is None:
+        A_init = etf_projection_2d(X_init, y)
+        with torch.no_grad():
+            classifier.weight.copy_(torch.tensor(A_init))
+        classifier.weight.requires_grad_(True)
+
     if A_init is None:
         theta = [torch.nn.Parameter(X), *classifier.parameters()]
     else:
@@ -72,13 +115,20 @@ def animate_training(filename=None, fig=None, rnd_seed=22, max_iters=1000, A_ini
             classifier.weight.copy_(torch.tensor(A_init))
             classifier.bias.copy_(torch.zeros_like(classifier.bias))
 
-    optimizer = torch.optim.AdamW(theta, lr=0.05)
+    optimizer = torch.optim.AdamW(theta, lr=0.05, weight_decay=0.01)
 
     # animate optimization
     video = None
     loss_curve = [None for i in range(max_iters)]
     for i in range(max_iters):
         print("\r...{} of {}".format(i + 1, max_iters), end='')
+
+        # do etf projection step
+        if proj:
+            A_init = etf_projection_2d(theta[0].clone().detach().numpy(), y)
+            with torch.no_grad():
+                classifier.weight.copy_(torch.tensor(A_init))
+            classifier.weight.requires_grad_(True)
 
         # do optimization step
         optimizer.zero_grad()
@@ -102,7 +152,8 @@ def animate_training(filename=None, fig=None, rnd_seed=22, max_iters=1000, A_ini
                 fourcc = cv2.VideoWriter_fourcc(*'h264')
                 video = cv2.VideoWriter(filename, fourcc, 30, (height, width))
 
-            video.write(img[:, :, 1:4])
+            img = cv2.cvtColor(img[:, :, 1:4], cv2.COLOR_RGB2BGR)
+            video.write(img)
 
     if video:
         video.release()
@@ -120,9 +171,14 @@ fig, loss_free = animate_training(filename)
 
 # training with fixed classifier
 filename = VID_FILENAME.format("fixed") if VID_FILENAME else None
-A_init = 2.0 * np.array([[-0.71, 0.71], [-0.71, -0.71], [1.0, 0.0]])
-fig, loss_fixed = animate_training(filename, fig=None, A_init = A_init, ref_losses=[loss_free])
+A_init = 2.8 * np.array([[-0.5, 0.866], [-0.5, -0.866], [1.0, 0.0]])
+fig, loss_fixed = animate_training(filename, fig=None, A_init=A_init, ref_losses=[loss_free])
 plt.legend(['fixed', 'free'])
+
+# training with classifier projection
+filename = VID_FILENAME.format("proj") if VID_FILENAME else None
+fig, loss_proj = animate_training(filename, fig=None, A_init=None, proj=True, ref_losses=[loss_fixed, loss_free])
+plt.legend(['proj', 'fixed', 'free'])
 
 # pause to show figures
 plt.show()
