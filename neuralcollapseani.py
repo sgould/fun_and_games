@@ -162,23 +162,38 @@ def animate_training(filename=None, fig=None, rnd_seed=22, max_iters=1000, A_ini
     fig = visualize_state(X_init, y, X.detach().numpy(), theta[1].detach().numpy() if A_init is None else A_init, loss_curve, fig)
     for i in range(len(ref_losses)):
         plt.semilogy(ref_losses[i], LINE_STYLES[i])
-    return fig, loss_curve
+    return fig, loss_curve, X.detach().numpy(), y
 
 
 # training run with free classifier
 filename = VID_FILENAME.format("free") if VID_FILENAME else None
-fig, loss_free = animate_training(filename)
+fig, loss_free, X_free, y = animate_training(filename)
 
 # training with fixed classifier
 filename = VID_FILENAME.format("fixed") if VID_FILENAME else None
 A_init = 2.8 * np.array([[-0.5, 0.866], [-0.5, -0.866], [1.0, 0.0]])
-fig, loss_fixed = animate_training(filename, fig=None, A_init=A_init, ref_losses=[loss_free])
+fig, loss_fixed, X_fixed, y = animate_training(filename, fig=None, A_init=A_init, ref_losses=[loss_free])
 plt.legend(['fixed', 'free'])
 
 # training with classifier projection
 filename = VID_FILENAME.format("proj") if VID_FILENAME else None
-fig, loss_proj = animate_training(filename, fig=None, A_init=None, proj=True, ref_losses=[loss_fixed, loss_free])
+fig, loss_proj, X_proj, y = animate_training(filename, fig=None, A_init=None, proj=True, ref_losses=[loss_fixed, loss_free])
 plt.legend(['proj', 'fixed', 'free'])
+
+# show final distribution of data
+fig = plt.figure(figsize=(16, 9), dpi=150 if VID_FILENAME else 75)
+fig.tight_layout(pad=0)
+
+PLOTS = [(X_free, "Free"), (X_fixed, "Fixed"), (X_proj, "Projected")]
+for i in range(len(PLOTS)):
+    plt.subplot(1, len(PLOTS), i+1)
+    for k in range(K):
+        indx = np.where(y == k)
+        plt.plot(PLOTS[i][0][indx, 0], PLOTS[i][0][indx, 1], color=COLOURS[k], marker=MARKERS[k])
+
+    plt.gca().set_xlim(-3, 3)
+    plt.gca().set_ylim(-3, 3)
+    plt.title("Feature Space ({})".format(PLOTS[i][1]))
 
 # pause to show figures
 plt.show()
