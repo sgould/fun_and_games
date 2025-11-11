@@ -10,20 +10,25 @@ from matplotlib import cm
 plt.rcParams.update({'font.size': 16})
 
 #def psi(x): return np.zeros_like(x)
-#def psi(x): return x
-def psi(x): return x + 2.0 * np.sin(x)
+def psi(x): return x
+#def psi(x): return x + 2.0 * np.sin(x)
+#def psi(x): return np.sqrt(np.maximum(0.0, 4.0 - np.square(x)))
 
-bIsolated = True
+nExampleId = 1
 bPlotReducedFcn = False
-bVidAnimation = True
+bVidAnimation = False
 VID_FILENAME = "reduction_mapping_ani.mp4"
 
-if bIsolated:
+if nExampleId == 1:
     def f(x, y): return x ** 2 + 2.0 * (y - x) ** 2
 
     x = np.arange(-5, 5, 0.25)
     y = np.arange(-5, 5, 0.25)
-else:
+
+    sx = np.array([0.0])
+    sy = np.array([0.0])
+
+elif nExampleId == 2:
     def f(x, y):
         z_1 = np.where(np.abs(x) < 1.0, 0.0, np.power(np.abs(x) - 1.0, 4.0))
         z_2 = (y - np.sin(x)) ** 2
@@ -32,14 +37,34 @@ else:
     x = np.arange(-4, 4, 0.25)
     y = np.arange(-4, 4, 0.25)
 
+    sx = np.linspace(-1.0, 1.0)
+    sy = np.sin(sx)
+
+elif nExampleId == 3:
+    def f(x, y):
+        z = np.sqrt(np.square(x) + np.square(y)) - 2.0
+        return np.square(z)
+
+    x = np.arange(-4, 4, 0.25)
+    y = np.arange(-4, 4, 0.25)
+
+    sx = 2.0 * np.cos(np.linspace(0, 2.0 * np.pi))
+    sy = 2.0 * np.sin(np.linspace(0, 2.0 * np.pi))
+
+else:
+    print("Unknown example {}.".format(nExampleId))
+    exit(1)
+
 X, Y = np.meshgrid(x, y)
 
 if bPlotReducedFcn:
     fig = plt.figure(figsize=(8, 6), dpi=75)
     plt.plot(x, f(x, 0 * x), 'k--')
     plt.plot(x, f(x, x), 'k-')
-    plt.plot(x, f(x, x + 2.0 * np.sin(x)), 'k:')
-    plt.legend([r"$x_2 = 0$", r"$x_2 = x_1$", r"$x_2 = x_1 + 2 \sin x_1$"])
+    #plt.plot(x, f(x, x + 2.0 * np.sin(x)), 'k:')
+    plt.plot(x, f(x, np.sqrt(np.maximum(0.0, 4.0 - np.square(x)))), 'k:')
+    #plt.legend([r"$x_2 = 0$", r"$x_2 = x_1$", r"$x_2 = x_1 + 2 \sin x_1$"])
+    plt.legend([r"$x_2 = 0$", r"$x_2 = x_1$", r"$x_2 = \sqrt{\max{0, 4 - x^2}}$"])
     plt.gca().set_xlabel('$x_1$')
     plt.gca().set_ylabel(r'$F(x_1) = f(x_1, \Psi(x_1))$')
 
@@ -75,15 +100,16 @@ def draw_frame(azim=-75, fig=None):
     # plot the projection
     ax = fig.add_subplot(2, 2, 2)
     ax.contour(X, Y, f(X, Y), cmap=cm.coolwarm)
-    ax.plot(x, psi(x), color='black', ls='--', lw=2)
-    if bIsolated:
-        ax.plot(0, 0, marker='o', color='black')
-        plt.text(0.25, -0.25, r'$(x_1^\star, x_2^\star)$', color='black')
+    if len(sx) == 1:
+        ax.plot(sx, sy, marker='o', color='green')
     else:
-        sx = np.linspace(-1.0, 1.0)
-        sy = np.sin(sx)
-        ax.plot(sx, sy, color='black', lw=4)
-        plt.text(1.25, 0.75, r'$(x_1^\star, x_2^\star)$', color='black')
+        ax.plot(sx, sy, color='green', lw=4)
+
+    indx = np.argsort(sx)[int(0.75 * len(sx))]
+    #indx = np.argmax(sx)
+    plt.text(sx[indx]+0.25, sy[indx]-0.25, r'$(x_1^\star, x_2^\star)$', color='green')
+
+    ax.plot(x, psi(x), color='black', ls='--', lw=2)
 
     ax.axis('square')
     ax.set_xticklabels([])
