@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bookings Calendar</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='2' y='4' width='20' height='18' rx='2' fill='%231565c0'/%3E%3Crect x='2' y='4' width='20' height='5' rx='2' fill='%230d47a1'/%3E%3Crect x='6' y='1' width='2' height='5' rx='1' fill='%230d47a1'/%3E%3Crect x='16' y='1' width='2' height='5' rx='1' fill='%230d47a1'/%3E%3Cg fill='%23ffffff'%3E%3Crect x='5' y='12' width='3' height='3'/%3E%3Crect x='10.5' y='12' width='3' height='3'/%3E%3Crect x='16' y='12' width='3' height='3'/%3E%3Crect x='5' y='17' width='3' height='3'/%3E%3Crect x='10.5' y='17' width='3' height='3'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+  :root {
+    --color-free: #ffffff;
+    --color-school: #ffe0b2;   /* light orange */
+    --color-public: #c8e6c9;   /* light green */
+    --color-available: #ffcdd2; /* light red */
+    --border: #d0d0d0;
+    --today-ring: #333;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 16px 24px 100px;
+    background: #fafafa;
+    color: #222;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  header h1 {
+    font-size: 1.4rem;
+    margin: 0 16px;
+  }
+
+  header button {
+    font-size: 1rem;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  header button:hover { background: #f0f0f0; }
+
+  header button.view-toggle.active {
+    background: #1565c0;
+    color: #fff;
+    border-color: #1565c0;
+  }
+  header button.view-toggle.active:hover { background: #1565c0; }
+
+  header input[type=number] {
+    width: 6em;
+    font-size: 1rem;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    text-align: center;
+  }
+
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+  }
+
+  .legend .swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  .legend span.item { display: flex; align-items: center; }
+
+  .year-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .month {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+  }
+
+  .month h2 {
+    text-align: center;
+    font-size: 1rem;
+    margin: 2px 0 10px;
+  }
+
+  table.month-table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  table.month-table th {
+    font-size: 0.7rem;
+    color: #888;
+    font-weight: 600;
+    padding: 2px 0;
+  }
+
+  table.month-table td {
+    text-align: center;
+    padding: 0;
+    height: 34px;
+    width: 14.28%;
+  }
+
+  .day {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    margin: 1px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    user-select: none;
+    background: var(--color-free);
+    border: 1px solid transparent;
+    position: relative;
+  }
+  .day:hover { border-color: #999; }
+
+  .day.school { background: var(--color-school); }
+  .day.public { background: var(--color-public); }
+  .day.available { background: var(--color-available); }
+
+  .day.today { box-shadow: inset 0 0 0 2px var(--today-ring); font-weight: 700; }
+
+  .day.selected {
+    box-shadow: inset 0 0 0 2px #1565c0;
+    background-color: #bbdefb !important;
+  }
+
+  .day.empty { visibility: hidden; cursor: default; }
+
+  .day .comment-dot {
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #000;
+  }
+
+  .toolbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-top: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+  }
+
+  .toolbar .selection-info {
+    font-size: 0.9rem;
+    color: #444;
+    margin-right: 12px;
+    min-width: 180px;
+  }
+
+  .toolbar input[type=text] {
+    font-size: 0.9rem;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 220px;
+  }
+
+  .toolbar button {
+    font-size: 0.9rem;
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    background: #fff;
+  }
+  .toolbar button:hover { background: #f0f0f0; }
+  .toolbar button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .toolbar button.set-free { background: var(--color-free); }
+  .toolbar button.set-school { background: var(--color-school); }
+  .toolbar button.set-public { background: var(--color-public); }
+  .toolbar button.set-available { background: var(--color-available); }
+
+  .hint {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 8px;
+  }
+
+  .list-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .list-nav button {
+    font-size: 1rem;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .list-nav button:hover { background: #f0f0f0; }
+
+  .list-nav span {
+    font-size: 1.1rem;
+    font-weight: 600;
+    min-width: 160px;
+    text-align: center;
+  }
+
+  .month-view {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  table.month-view-table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  table.month-view-table th {
+    font-size: 0.8rem;
+    color: #888;
+    font-weight: 600;
+    padding: 6px 0;
+    text-align: center;
+  }
+
+  table.month-view-table td {
+    border: 1px solid var(--border);
+    padding: 0;
+    height: 110px;
+    width: 14.28%;
+  }
+
+  .day-expanded {
+    height: 100%;
+    min-height: 110px;
+    box-sizing: border-box;
+    padding: 6px;
+    cursor: pointer;
+    background: var(--color-free);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .day-expanded:hover { box-shadow: inset 0 0 0 1px #999; }
+
+  .day-expanded.school { background: var(--color-school); }
+  .day-expanded.public { background: var(--color-public); }
+  .day-expanded.available { background: var(--color-available); }
+
+  .day-expanded.today { box-shadow: inset 0 0 0 2px var(--today-ring); }
+
+  .day-expanded.selected {
+    box-shadow: inset 0 0 0 2px #1565c0;
+    background-color: #bbdefb !important;
+  }
+
+  .day-expanded.empty { background: #fafafa; cursor: default; }
+
+  .day-number {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .day-comment-input {
+    flex: 1;
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 4px 6px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.6);
+    box-sizing: border-box;
+    align-self: flex-end;
+  }
+  .day-expanded:not(.empty):hover .day-comment-input { border-color: rgba(0, 0, 0, 0.2); }
+  .day-comment-input:focus {
+    outline: none;
+    border-color: #1565c0;
+    background: #fff;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <button id="prevYear" title="Previous year">&#8592;</button>
+  <input type="number" id="yearInput" />
+  <button id="nextYear" title="Next year">&#8594;</button>
+  <h1 id="yearTitle"></h1>
+  <button id="todayBtn">Today</button>
+  <button class="view-toggle active" id="viewCalendarBtn">Calendar View</button>
+  <button class="view-toggle" id="viewListBtn">Month View</button>
+  <button id="logoutBtn">Log Out</button>
+</header>
+
+<div class="legend">
+  <span class="item"><span class="swatch" style="background:var(--color-free)"></span>Free / unset</span>
+  <span class="item"><span class="swatch" style="background:var(--color-school)"></span>School holidays</span>
+  <span class="item"><span class="swatch" style="background:var(--color-public)"></span>Public holiday</span>
+  <span class="item"><span class="swatch" style="background:var(--color-available)"></span>Available for rental</span>
+</div>
+
+<div class="hint">Click a day to select it. Shift+click to select a range. Ctrl/Cmd+click to add/remove individual days.</div>
+
+<div class="list-nav" id="listNav" style="display:none;">
+  <button id="prevMonth" title="Previous month">&#8592;</button>
+  <span id="monthTitle"></span>
+  <button id="nextMonth" title="Next month">&#8594;</button>
+</div>
+
+<div class="year-grid" id="yearGrid"></div>
+<div class="list-container" id="listContainer" style="display:none;"></div>
+
+<div class="toolbar">
+  <span class="selection-info" id="selectionInfo">No days selected</span>
+  <button class="set-free" id="btnFree">Set: Free</button>
+  <button class="set-school" id="btnSchool">Set: School Holidays</button>
+  <button class="set-public" id="btnPublic">Set: Public Holiday</button>
+  <button class="set-available" id="btnAvailable">Set: Available for Rental</button>
+  <button id="btnClearSelection">Clear Selection</button>
+  <input type="text" id="commentInput" placeholder="Comment for selected day(s)..." />
+  <button id="btnSetComment">Set Comment</button>
+  <button id="btnClearComment">Clear Comment</button>
+</div>
+
+<script>
+(function () {
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  const STATUS_CLASS = {
+    free: null,
+    school: 'school',
+    public: 'public',
+    available: 'available'
+  };
+
+  let currentYear = new Date().getFullYear();
+  let currentMonth = new Date().getMonth(); // 0-11, used by list view
+  let currentView = 'calendar'; // 'calendar' | 'list'
+  let data = {};
+  let selected = new Set();      // set of 'YYYY-MM-DD' strings
+  let lastClicked = null;        // last date string clicked (for shift-range)
+
+  const POLL_INTERVAL_MS = 7000;
+
+  async function loadData() {
+    try {
+      const res = await fetch('/api/days');
+      if (res.status === 401) { window.location.href = '/login.html'; return; }
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+      data = await res.json();
+    } catch (e) {
+      console.error('Failed to load calendar data', e);
+      alert('Could not load calendar data from the server. Is server.py running?');
+      data = {};
+    }
+  }
+
+  function isEditingInput() {
+    const el = document.activeElement;
+    return !!el && el.tagName === 'INPUT';
+  }
+
+  // Periodically re-fetch so other users' changes show up without a manual
+  // refresh. Skipped while the tab is hidden or an input is focused, so it
+  // never clobbers in-progress typing or selection state.
+  async function pollForUpdates() {
+    if (document.hidden || isEditingInput()) return;
+    let newData;
+    try {
+      const res = await fetch('/api/days');
+      if (res.status === 401) { window.location.href = '/login.html'; return; }
+      if (!res.ok) return;
+      newData = await res.json();
+    } catch (e) {
+      return;
+    }
+    if (JSON.stringify(newData) !== JSON.stringify(data)) {
+      data = newData;
+      renderYear();
+    }
+  }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function dateKey(y, m, d) {
+    return `${y}-${pad(m + 1)}-${pad(d)}`;
+  }
+
+  function todayKey() {
+    const t = new Date();
+    return dateKey(t.getFullYear(), t.getMonth(), t.getDate());
+  }
+
+  // Monday-first day-of-week index (0=Mon .. 6=Sun)
+  function mondayIndex(jsDay) {
+    return (jsDay + 6) % 7;
+  }
+
+  function buildMonth(year, monthIdx) {
+    const monthDiv = document.createElement('div');
+    monthDiv.className = 'month';
+
+    const h2 = document.createElement('h2');
+    h2.textContent = MONTH_NAMES[monthIdx];
+    monthDiv.appendChild(h2);
+
+    const table = document.createElement('table');
+    table.className = 'month-table';
+
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    DAY_NAMES.forEach(dn => {
+      const th = document.createElement('th');
+      th.textContent = dn;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    const firstOfMonth = new Date(year, monthIdx, 1);
+    const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+    const startOffset = mondayIndex(firstOfMonth.getDay());
+
+    let dayCounter = 1;
+    let row = document.createElement('tr');
+
+    for (let i = 0; i < startOffset; i++) {
+      const td = document.createElement('td');
+      const empty = document.createElement('div');
+      empty.className = 'day empty';
+      td.appendChild(empty);
+      row.appendChild(td);
+    }
+
+    while (dayCounter <= daysInMonth) {
+      if (row.children.length === 7) {
+        tbody.appendChild(row);
+        row = document.createElement('tr');
+      }
+      const td = document.createElement('td');
+      const key = dateKey(year, monthIdx, dayCounter);
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'day';
+      dayDiv.dataset.date = key;
+      dayDiv.textContent = dayCounter;
+
+      const entry = data[key];
+      const cls = entry ? STATUS_CLASS[entry.status] : null;
+      if (cls) dayDiv.classList.add(cls);
+
+      if (entry && entry.comment) {
+        const dot = document.createElement('div');
+        dot.className = 'comment-dot';
+        dayDiv.appendChild(dot);
+        dayDiv.title = entry.comment;
+      }
+
+      if (key === todayKey()) dayDiv.classList.add('today');
+      if (selected.has(key)) dayDiv.classList.add('selected');
+
+      dayDiv.addEventListener('click', (e) => onDayClick(e, key));
+
+      td.appendChild(dayDiv);
+      row.appendChild(td);
+      dayCounter++;
+    }
+
+    while (row.children.length > 0 && row.children.length < 7) {
+      const td = document.createElement('td');
+      const empty = document.createElement('div');
+      empty.className = 'day empty';
+      td.appendChild(empty);
+      row.appendChild(td);
+    }
+    if (row.children.length > 0) tbody.appendChild(row);
+
+    table.appendChild(tbody);
+    monthDiv.appendChild(table);
+    return monthDiv;
+  }
+
+  function formatDateLabel(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function buildMonthView(year, monthIdx) {
+    const container = document.createElement('div');
+    container.className = 'month-view';
+
+    const table = document.createElement('table');
+    table.className = 'month-view-table';
+
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    DAY_NAMES.forEach(dn => {
+      const th = document.createElement('th');
+      th.textContent = dn;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    const firstOfMonth = new Date(year, monthIdx, 1);
+    const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+    const startOffset = mondayIndex(firstOfMonth.getDay());
+
+    let dayCounter = 1;
+    let row = document.createElement('tr');
+
+    for (let i = 0; i < startOffset; i++) {
+      const td = document.createElement('td');
+      const empty = document.createElement('div');
+      empty.className = 'day-expanded empty';
+      td.appendChild(empty);
+      row.appendChild(td);
+    }
+
+    while (dayCounter <= daysInMonth) {
+      if (row.children.length === 7) {
+        tbody.appendChild(row);
+        row = document.createElement('tr');
+      }
+      const td = document.createElement('td');
+      const key = dateKey(year, monthIdx, dayCounter);
+      const entry = data[key];
+      const status = entry ? entry.status : 'free';
+      const comment = entry && entry.comment ? entry.comment : '';
+
+      const cell = document.createElement('div');
+      cell.className = 'day-expanded';
+      const cls = STATUS_CLASS[status];
+      if (cls) cell.classList.add(cls);
+      if (key === todayKey()) cell.classList.add('today');
+      if (selected.has(key)) cell.classList.add('selected');
+      cell.title = formatDateLabel(key);
+
+      const numberDiv = document.createElement('div');
+      numberDiv.className = 'day-number';
+      numberDiv.textContent = dayCounter;
+      cell.appendChild(numberDiv);
+
+      const commentInput = document.createElement('input');
+      commentInput.type = 'text';
+      commentInput.className = 'day-comment-input';
+      commentInput.value = comment;
+      commentInput.addEventListener('click', (e) => e.stopPropagation());
+      commentInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commentInput.blur();
+        }
+      });
+      commentInput.addEventListener('blur', () => {
+        if (commentInput.value !== comment) saveRowComment(key, commentInput.value);
+      });
+      cell.appendChild(commentInput);
+
+      cell.addEventListener('click', (e) => onDayClick(e, key));
+
+      td.appendChild(cell);
+      row.appendChild(td);
+      dayCounter++;
+    }
+
+    while (row.children.length > 0 && row.children.length < 7) {
+      const td = document.createElement('td');
+      const empty = document.createElement('div');
+      empty.className = 'day-expanded empty';
+      td.appendChild(empty);
+      row.appendChild(td);
+    }
+    if (row.children.length > 0) tbody.appendChild(row);
+
+    table.appendChild(tbody);
+    container.appendChild(table);
+    return container;
+  }
+
+  async function saveRowComment(key, comment) {
+    try {
+      const res = await fetch('/api/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dates: [key], comment })
+      });
+      if (res.status === 401) { window.location.href = '/login.html'; return; }
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+    } catch (e) {
+      console.error('Failed to save comment', e);
+      alert('Could not save the comment to the server. Is server.py running?');
+      return;
+    }
+    const trimmed = comment.trim() || null;
+    const status = data[key] ? data[key].status : 'free';
+    if (!trimmed && status === 'free') delete data[key];
+    else data[key] = { status, comment: trimmed };
+  }
+
+  function allDateKeysInYear(year) {
+    const keys = [];
+    for (let m = 0; m < 12; m++) {
+      const daysInMonth = new Date(year, m + 1, 0).getDate();
+      for (let d = 1; d <= daysInMonth; d++) keys.push(dateKey(year, m, d));
+    }
+    return keys;
+  }
+
+  function onDayClick(e, key) {
+    e.preventDefault();
+    const yearKeys = allDateKeysInYear(currentYear);
+
+    if (e.shiftKey && lastClicked && yearKeys.includes(lastClicked)) {
+      const i1 = yearKeys.indexOf(lastClicked);
+      const i2 = yearKeys.indexOf(key);
+      const [lo, hi] = i1 < i2 ? [i1, i2] : [i2, i1];
+      for (let i = lo; i <= hi; i++) selected.add(yearKeys[i]);
+    } else if (e.ctrlKey || e.metaKey) {
+      if (selected.has(key)) selected.delete(key);
+      else selected.add(key);
+      lastClicked = key;
+    } else {
+      // plain click: if it's the only thing selected, toggle it off; otherwise start fresh selection
+      if (selected.size === 1 && selected.has(key)) {
+        selected.delete(key);
+      } else {
+        selected.clear();
+        selected.add(key);
+      }
+      lastClicked = key;
+    }
+
+    renderYear();
+  }
+
+  async function applyStatus(status) {
+    if (selected.size === 0) return;
+    const dates = [...selected];
+    setToolbarDisabled(true);
+    try {
+      const res = await fetch('/api/days', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dates, status })
+      });
+      if (res.status === 401) { window.location.href = '/login.html'; return; }
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+    } catch (e) {
+      console.error('Failed to save calendar data', e);
+      alert('Could not save changes to the server. Is server.py running?');
+      setToolbarDisabled(false);
+      return;
+    }
+    dates.forEach(key => {
+      const comment = data[key] ? data[key].comment : null;
+      if (status === 'free' && !comment) delete data[key];
+      else data[key] = { status, comment };
+    });
+    selected.clear();
+    renderYear();
+  }
+
+  async function setComment(clear) {
+    if (selected.size === 0) return;
+    const dates = [...selected];
+    const comment = clear ? '' : document.getElementById('commentInput').value;
+    setToolbarDisabled(true);
+    try {
+      const res = await fetch('/api/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dates, comment })
+      });
+      if (res.status === 401) { window.location.href = '/login.html'; return; }
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+    } catch (e) {
+      console.error('Failed to save comment', e);
+      alert('Could not save the comment to the server. Is server.py running?');
+      setToolbarDisabled(false);
+      return;
+    }
+    const trimmed = comment.trim() || null;
+    dates.forEach(key => {
+      const status = data[key] ? data[key].status : 'free';
+      if (!trimmed && status === 'free') delete data[key];
+      else data[key] = { status, comment: trimmed };
+    });
+    selected.clear();
+    renderYear();
+  }
+
+  function setToolbarDisabled(disabled) {
+    ['btnFree','btnSchool','btnPublic','btnAvailable','btnClearSelection','btnSetComment','btnClearComment'].forEach(id => {
+      document.getElementById(id).disabled = disabled;
+    });
+  }
+
+  function updateSelectionInfo() {
+    const info = document.getElementById('selectionInfo');
+    const n = selected.size;
+    if (n === 0) {
+      info.textContent = 'No days selected';
+    } else if (n === 1) {
+      info.textContent = `1 day selected (${[...selected][0]})`;
+    } else {
+      info.textContent = `${n} days selected`;
+    }
+    const disable = n === 0;
+    ['btnFree','btnSchool','btnPublic','btnAvailable','btnSetComment','btnClearComment'].forEach(id => {
+      document.getElementById(id).disabled = disable;
+    });
+
+    const commentInput = document.getElementById('commentInput');
+    if (n === 1) {
+      const entry = data[[...selected][0]];
+      commentInput.value = (entry && entry.comment) || '';
+    } else {
+      commentInput.value = '';
+    }
+  }
+
+  function renderYear() {
+    document.getElementById('yearTitle').textContent = String(currentYear);
+    document.getElementById('yearInput').value = currentYear;
+
+    const grid = document.getElementById('yearGrid');
+    const list = document.getElementById('listContainer');
+    const listNav = document.getElementById('listNav');
+
+    if (currentView === 'list') {
+      grid.style.display = 'none';
+      list.style.display = '';
+      listNav.style.display = '';
+      document.getElementById('monthTitle').textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
+      list.innerHTML = '';
+      list.appendChild(buildMonthView(currentYear, currentMonth));
+    } else {
+      list.style.display = 'none';
+      listNav.style.display = 'none';
+      grid.style.display = '';
+      grid.innerHTML = '';
+      for (let m = 0; m < 12; m++) {
+        grid.appendChild(buildMonth(currentYear, m));
+      }
+    }
+    updateSelectionInfo();
+  }
+
+  function setView(view) {
+    currentView = view;
+    document.getElementById('viewCalendarBtn').classList.toggle('active', view === 'calendar');
+    document.getElementById('viewListBtn').classList.toggle('active', view === 'list');
+    renderYear();
+  }
+
+  function changeMonth(delta) {
+    let newMonth = currentMonth + delta;
+    let newYear = currentYear;
+    if (newMonth < 0) { newMonth = 11; newYear -= 1; }
+    else if (newMonth > 11) { newMonth = 0; newYear += 1; }
+    currentMonth = newMonth;
+    currentYear = newYear;
+    selected.clear();
+    lastClicked = null;
+    renderYear();
+  }
+
+  document.getElementById('prevYear').addEventListener('click', () => {
+    currentYear--; selected.clear(); lastClicked = null; renderYear();
+  });
+  document.getElementById('nextYear').addEventListener('click', () => {
+    currentYear++; selected.clear(); lastClicked = null; renderYear();
+  });
+  document.getElementById('todayBtn').addEventListener('click', () => {
+    const t = new Date();
+    currentYear = t.getFullYear(); currentMonth = t.getMonth(); selected.clear(); lastClicked = null; renderYear();
+  });
+  document.getElementById('viewCalendarBtn').addEventListener('click', () => setView('calendar'));
+  document.getElementById('viewListBtn').addEventListener('click', () => setView('list'));
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+    } catch (e) {
+      console.error('Failed to log out', e);
+    }
+    window.location.href = '/login.html';
+  });
+  document.getElementById('prevMonth').addEventListener('click', () => changeMonth(-1));
+  document.getElementById('nextMonth').addEventListener('click', () => changeMonth(1));
+  document.getElementById('yearInput').addEventListener('change', (e) => {
+    const v = parseInt(e.target.value, 10);
+    if (!isNaN(v) && v > 0) {
+      currentYear = v; selected.clear(); lastClicked = null; renderYear();
+    }
+  });
+
+  document.getElementById('btnFree').addEventListener('click', () => applyStatus('free'));
+  document.getElementById('btnSchool').addEventListener('click', () => applyStatus('school'));
+  document.getElementById('btnPublic').addEventListener('click', () => applyStatus('public'));
+  document.getElementById('btnAvailable').addEventListener('click', () => applyStatus('available'));
+  document.getElementById('btnClearSelection').addEventListener('click', () => {
+    selected.clear(); renderYear();
+  });
+  document.getElementById('btnSetComment').addEventListener('click', () => setComment(false));
+  document.getElementById('btnClearComment').addEventListener('click', () => setComment(true));
+  document.getElementById('commentInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setComment(false);
+    }
+  });
+
+  // Typing while a day is selected (and no input is focused) jumps focus
+  // to the comment field and starts entering text there, spreadsheet-style.
+  document.addEventListener('keydown', (e) => {
+    if (selected.size === 0) return;
+    const activeTag = document.activeElement && document.activeElement.tagName;
+    if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length !== 1) return;
+
+    e.preventDefault();
+    const commentInput = document.getElementById('commentInput');
+    commentInput.value = e.key;
+    commentInput.focus();
+    commentInput.setSelectionRange(commentInput.value.length, commentInput.value.length);
+  });
+
+  (async function init() {
+    await loadData();
+    renderYear();
+    setInterval(pollForUpdates, POLL_INTERVAL_MS);
+  })();
+})();
+</script>
+
+</body>
+</html>
