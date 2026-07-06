@@ -172,12 +172,18 @@
     background: #fff;
     border-top: 1px solid var(--border);
     padding: 10px 16px;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
     flex-wrap: wrap;
-    box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+  }
+
+  /* On desktop the two logical rows are flattened into one: their children
+     flow directly into the .toolbar flex container as a single row. */
+  .toolbar-row {
+    display: contents;
   }
 
   .toolbar .selection-info {
@@ -186,6 +192,8 @@
     margin-right: 12px;
     min-width: 180px;
   }
+
+  .comment-toggle { display: none; }
 
   .toolbar input[type=text] {
     font-size: 0.9rem;
@@ -320,6 +328,48 @@
     border-color: #1565c0;
     background: #fff;
   }
+
+  @media (max-width: 600px) {
+    body { padding-bottom: 80px; }
+
+    /* Split back into two real rows: the main row stays in-flow, the
+       comment row becomes a collapsible overlay above it. */
+    .toolbar { display: block; padding: 8px 10px; }
+    .toolbar-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar .selection-info { min-width: 0; margin-right: 4px; font-size: 0.8rem; }
+
+    .toolbar button {
+      font-size: 0.85rem;
+      padding: 6px 10px;
+    }
+
+    .comment-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toolbar-comment {
+      display: none;
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      padding: 10px;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+    }
+    .toolbar-comment.expanded { display: flex; }
+    .toolbar-comment input[type=text] { flex: 1; width: auto; min-width: 0; }
+  }
 </style>
 </head>
 <body>
@@ -354,15 +404,19 @@
 <div class="list-container" id="listContainer" style="display:none;"></div>
 
 <div class="toolbar">
-  <span class="selection-info" id="selectionInfo">No days selected</span>
-  <button class="set-free" id="btnFree">Set: Free</button>
-  <button class="set-school" id="btnSchool">Set: School Holidays</button>
-  <button class="set-public" id="btnPublic">Set: Public Holiday</button>
-  <button class="set-available" id="btnAvailable">Set: Available for Rental</button>
-  <button id="btnClearSelection">Clear Selection</button>
-  <input type="text" id="commentInput" placeholder="Comment for selected day(s)..." />
-  <button id="btnSetComment">Set Comment</button>
-  <button id="btnClearComment">Clear Comment</button>
+  <div class="toolbar-row toolbar-main">
+    <span class="selection-info" id="selectionInfo">No days selected</span>
+    <button class="set-free" id="btnFree" title="Set: Free">Free</button>
+    <button class="set-school" id="btnSchool" title="Set: School Holidays">School</button>
+    <button class="set-public" id="btnPublic" title="Set: Public Holiday">Public</button>
+    <button class="set-available" id="btnAvailable" title="Set: Available for Rental">Available</button>
+    <button id="btnCommentToggle" class="comment-toggle" title="Add/edit comment">&#128172;</button>
+  </div>
+  <div class="toolbar-row toolbar-comment" id="toolbarComment">
+    <input type="text" id="commentInput" placeholder="Comment for selected day(s)..." />
+    <button id="btnSetComment">Set Comment</button>
+    <button id="btnClearComment">Clear Comment</button>
+  </div>
 </div>
 
 <script>
@@ -739,7 +793,7 @@
   }
 
   function setToolbarDisabled(disabled) {
-    ['btnFree','btnSchool','btnPublic','btnAvailable','btnClearSelection','btnSetComment','btnClearComment'].forEach(id => {
+    ['btnFree','btnSchool','btnPublic','btnAvailable','btnSetComment','btnClearComment'].forEach(id => {
       document.getElementById(id).disabled = disabled;
     });
   }
@@ -847,9 +901,6 @@
   document.getElementById('btnSchool').addEventListener('click', () => applyStatus('school'));
   document.getElementById('btnPublic').addEventListener('click', () => applyStatus('public'));
   document.getElementById('btnAvailable').addEventListener('click', () => applyStatus('available'));
-  document.getElementById('btnClearSelection').addEventListener('click', () => {
-    selected.clear(); renderYear();
-  });
   document.getElementById('btnSetComment').addEventListener('click', () => setComment(false));
   document.getElementById('btnClearComment').addEventListener('click', () => setComment(true));
   document.getElementById('commentInput').addEventListener('keydown', (e) => {
@@ -857,6 +908,12 @@
       e.preventDefault();
       setComment(false);
     }
+  });
+
+  // On narrow screens the comment row is hidden behind this toggle to keep
+  // the fixed bottom toolbar down to a single compact row.
+  document.getElementById('btnCommentToggle').addEventListener('click', () => {
+    document.getElementById('toolbarComment').classList.toggle('expanded');
   });
 
   // Typing while a day is selected (and no input is focused) jumps focus
@@ -869,6 +926,7 @@
     if (e.key.length !== 1) return;
 
     e.preventDefault();
+    document.getElementById('toolbarComment').classList.add('expanded');
     const commentInput = document.getElementById('commentInput');
     commentInput.value = e.key;
     commentInput.focus();
