@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design Your Own Balance Board</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --panel: #ffffff;
+    --ink: #1c1c1a;
+    --muted: #6b6b66;
+    --line: #dcdcd6;
+    --grid-minor: #e6e6df;
+    --grid-major: #d2d2c8;
+    --axis: #b9b9ad;
+    --board: #3b82c4;
+    --board-fill: rgba(59, 130, 196, 0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17171a;
+      --panel: #1f1f23;
+      --ink: #ecece8;
+      --muted: #9a9a94;
+      --line: #33333a;
+      --grid-minor: #27272c;
+      --grid-major: #34343b;
+      --axis: #4a4a52;
+      --board: #6aa9e0;
+      --board-fill: rgba(106, 169, 224, 0.12);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  .head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0; }
+  .sub code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+
+  .stage {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 16px;
+  }
+  svg { display: block; width: 100%; height: auto; }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  .ctl {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .ctl header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .ctl h2 { font-size: 14px; font-weight: 600; margin: 0; }
+  .ctl .val {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 14px; color: var(--board); font-weight: 600;
+  }
+  .ctl .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  input[type=range] { width: 100%; accent-color: var(--board); }
+  .check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .check input { width: 16px; height: 16px; accent-color: var(--board); cursor: pointer; }
+  button {
+    flex: none; padding: 8px 16px; font: inherit; font-weight: 500; cursor: pointer;
+    color: var(--panel); background: var(--board);
+    border: none; border-radius: 6px;
+  }
+  button:hover { filter: brightness(1.08); }
+
+  .stats {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .stat .k { font-size: 12px; color: var(--muted); }
+  .stat .v {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 17px; font-weight: 600; margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>Design Your Own Balance Board</h1>
+      <p class="sub">Hyperellipse &nbsp;<code>|x/400|<sup>a</sup> + |y/170|<sup>b</sup> = 1</code>&nbsp; — all dimensions in mm.</p>
+    </div>
+    <button id="dl" title="Geometry only, 1 unit = 1 mm — true scale for CAD or cutting">Download SVG</button>
+  </div>
+
+  <div class="stage">
+    <svg id="plot" viewBox="-470 -235 940 470" preserveAspectRatio="xMidYMid meet"
+         font-family="ui-monospace, Consolas, monospace">
+      <defs>
+        <pattern id="minor" width="10" height="10" patternUnits="userSpaceOnUse">
+          <path d="M10 0 L0 0 L0 10" fill="none" stroke="var(--grid-minor)" stroke-width="0.5"/>
+        </pattern>
+        <pattern id="major" width="50" height="50" patternUnits="userSpaceOnUse">
+          <path d="M50 0 L0 0 L0 50" fill="none" stroke="var(--grid-major)" stroke-width="1"/>
+        </pattern>
+      </defs>
+
+      <!-- grid, anchored so lines land on multiples of 10/50 mm -->
+      <g>
+        <rect x="-450" y="-220" width="900" height="440" fill="url(#minor)"/>
+        <rect x="-450" y="-220" width="900" height="440" fill="url(#major)"/>
+      </g>
+
+      <!-- axes -->
+      <g stroke="var(--axis)" stroke-width="1">
+        <line x1="-450" y1="0" x2="450" y2="0"/>
+        <line x1="0" y1="-220" x2="0" y2="220"/>
+      </g>
+
+      <!-- tick labels -->
+      <g id="ticks" fill="var(--muted)" font-size="11"></g>
+
+      <!-- the board (outline + hand-hold cutout, even-odd so the hole reads as a hole) -->
+      <path id="curve" fill="var(--board-fill)" fill-rule="evenodd" stroke="var(--board)"
+            stroke-width="2.5" stroke-linejoin="round"/>
+
+      <!-- 30 mm inset reference line, kept only outboard of x = ±330 -->
+      <path id="inset" fill="none" stroke="var(--board)" stroke-width="1" opacity="0.45"
+            stroke-dasharray="8 6" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <div class="controls">
+    <div class="ctl">
+      <header><h2>Exponent a &nbsp;<span style="color:var(--muted);font-weight:400">(length axis)</span></h2>
+              <span class="val" id="aVal">2.0</span></header>
+      <input type="range" id="a" min="1" max="10" step="0.1" value="2">
+      <div class="hint">1 = diamond · 2 = ellipse · higher = flatter, more rectangular ends</div>
+    </div>
+    <div class="ctl">
+      <header><h2>Exponent b &nbsp;<span style="color:var(--muted);font-weight:400">(width axis)</span></h2>
+              <span class="val" id="bVal">2.0</span></header>
+      <input type="range" id="b" min="1" max="10" step="0.1" value="2">
+      <div class="hint">controls how square the profile is across the width</div>
+    </div>
+    <div class="ctl">
+      <header><h2>Hand hold</h2></header>
+      <label class="check"><input type="checkbox" id="hasHole" checked> Include cutout</label>
+      <div class="hint">102 × 32 mm slot centred on the board</div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="k">Length (2·400)</div><div class="v">800 mm</div></div>
+    <div class="stat"><div class="k">Width (2·170)</div><div class="v">340 mm</div></div>
+    <div class="stat"><div class="k" id="areaLabel">Area</div><div class="v" id="area">—</div></div>
+    <div class="stat"><div class="k">Outline perimeter</div><div class="v" id="perim">—</div></div>
+    <div class="stat"><div class="k">Hand hold</div><div class="v" id="hole">—</div></div>
+  </div>
+</div>
+
+<script>
+const A = 400, B = 170;          // semi-axes in mm
+const INSET = 30;                // dashed reference line, mm in from each semi-axis
+const CAP_X = 330;               // inset line is truncated here and closed with a vertical
+const N = 1200;                  // samples around the curve
+
+// hand hold: two semicircles of radius HR at (±HX, 0) joined by straight edges at y = ±HR
+const HR = 16, HX = 35;
+const HOLE_AREA = Math.PI * HR * HR + 2 * HX * 2 * HR;   // circle + central rectangle
+
+const $ = id => document.getElementById(id);
+const curve = $('curve');
+
+// Tick labels along both axes (every 100 mm)
+(function ticks() {
+  const g = $('ticks');
+  const mk = (x, y, t, anchor) => {
+    const e = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    e.setAttribute('x', x); e.setAttribute('y', y);
+    e.setAttribute('text-anchor', anchor); e.textContent = t;
+    g.appendChild(e);
+  };
+  for (let x = -400; x <= 400; x += 100) if (x) mk(x, 14, x, 'middle');
+  for (let y = -200; y <= 200; y += 100) if (y) mk(-6, -y + 4, y, 'end');
+  mk(-6, 14, '0', 'end');
+})();
+
+function points(rx, ry, a, b) {
+  // x = rx·sgn(cos t)·|cos t|^(2/a),  y = ry·sgn(sin t)·|sin t|^(2/b)
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const t = 2 * Math.PI * i / N;
+    const c = Math.cos(t), s = Math.sin(t);
+    pts.push([
+      rx * Math.sign(c) * Math.pow(Math.abs(c), 2 / a),
+      ry * Math.sign(s) * Math.pow(Math.abs(s), 2 / b)
+    ]);
+  }
+  return pts;
+}
+
+// SVG y points down, so negate y
+const toPath = pts =>
+  'M' + pts.map(p => p[0].toFixed(2) + ' ' + (-p[1]).toFixed(2)).join(' L') + ' Z';
+
+// The two end caps of the inset curve: the arcs outboard of x = ±CAP_X, each
+// closed by the vertical chord at x = ±CAP_X.
+function caps(a, b) {
+  const rx = A - INSET, ry = B - INSET;
+  const t0 = Math.acos(Math.pow(CAP_X / rx, a / 2));   // |x| >= CAP_X for |t| <= t0
+  const M = 300, right = [];
+  for (let i = 0; i <= M; i++) {
+    const t = -t0 + 2 * t0 * i / M;
+    const c = Math.cos(t), s = Math.sin(t);
+    right.push([
+      rx * Math.pow(Math.abs(c), 2 / a),
+      ry * Math.sign(s) * Math.pow(Math.abs(s), 2 / b)
+    ]);
+  }
+  return toPath(right) + ' ' + toPath(right.map(p => [-p[0], p[1]]));
+}
+
+let current = null;              // geometry of the last draw, reused by the exporter
+
+function draw() {
+  const a = parseFloat($('a').value), b = parseFloat($('b').value);
+  $('aVal').textContent = a.toFixed(1);
+  $('bVal').textContent = b.toFixed(1);
+
+  const pts = points(A, B, a, b);
+  const withHole = $('hasHole').checked;
+
+  // stadium-shaped cutout, drawn as a second subpath
+  const hole = withHole
+    ? ` M${HX} ${-HR} A${HR} ${HR} 0 0 1 ${HX} ${HR}`
+      + ` L${-HX} ${HR} A${HR} ${HR} 0 0 1 ${-HX} ${-HR} Z`
+    : '';
+
+  const capPaths = caps(a, b);
+  curve.setAttribute('d', toPath(pts) + hole);
+  $('inset').setAttribute('d', capPaths);
+  current = { a, b, outline: toPath(pts), hole: hole.trim(), caps: capPaths };
+
+  // shoelace area + polyline perimeter
+  let area = 0, perim = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length];
+    area += x1 * y2 - x2 * y1;
+    perim += Math.hypot(x2 - x1, y2 - y1);
+  }
+  area = Math.abs(area) / 2 - (withHole ? HOLE_AREA : 0);
+
+  $('area').textContent = (area / 1e6).toFixed(3) + ' m²';
+  $('areaLabel').textContent = withHole ? 'Area (net of cutout)' : 'Area';
+  $('perim').textContent = Math.round(perim) + ' mm';
+  $('hole').textContent = withHole ? (2 * HX + 2 * HR) + ' × ' + (2 * HR) + ' mm' : 'none';
+}
+
+// Standalone SVG of the geometry alone: no grid, no labels, 1 user unit = 1 mm.
+function exportSVG() {
+  const { a, b, outline, hole, caps } = current;
+  const w = 2 * A, h = 2 * B;
+  const svg =
+`<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm"
+     viewBox="${-A} ${-B} ${w} ${h}">
+  <title>Balance board — |x/${A}|^${a} + |y/${B}|^${b} = 1</title>
+  <g fill="none" stroke="#000000" stroke-width="0.5" stroke-linejoin="round">
+    <path id="outline" d="${outline}"/>${hole ? `
+    <path id="handhold" d="${hole}"/>` : ''}
+    <path id="inset" d="${caps}" stroke-dasharray="8 6"/>
+  </g>
+</svg>
+`;
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `balance-board-a${a.toFixed(1)}-b${b.toFixed(1)}.svg`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+$('a').addEventListener('input', draw);
+$('b').addEventListener('input', draw);
+$('hasHole').addEventListener('change', draw);
+$('dl').addEventListener('click', exportSVG);
+draw();
+</script>
+</body>
+</html>
