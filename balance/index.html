@@ -16,6 +16,7 @@
     --axis: #b9b9ad;
     --board: #3b82c4;
     --board-fill: rgba(59, 130, 196, 0.10);
+    --ref: #cf3a41;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -29,6 +30,7 @@
       --axis: #4a4a52;
       --board: #6aa9e0;
       --board-fill: rgba(106, 169, 224, 0.12);
+      --ref: #ef6a70;
     }
   }
   * { box-sizing: border-box; }
@@ -87,6 +89,12 @@
     border: none; border-radius: 6px;
   }
   button:hover { filter: brightness(1.08); }
+  .actions { display: flex; gap: 8px; flex: none; }
+  button.secondary {
+    color: var(--ref); background: transparent;
+    box-shadow: inset 0 0 0 1px var(--ref);
+  }
+  button.secondary:hover { background: color-mix(in srgb, var(--ref) 10%, transparent); }
 
   .stats {
     margin-top: 16px;
@@ -114,7 +122,10 @@
       <h1>Design Your Own Balance Board</h1>
       <p class="sub">Hyperellipse &nbsp;<code>|x/400|<sup>a</sup> + |y/170|<sup>b</sup> = 1</code>&nbsp; — all dimensions in mm.</p>
     </div>
-    <button id="dl" title="Geometry only, 1 unit = 1 mm — true scale for CAD or cutting">Download SVG</button>
+    <div class="actions">
+      <button id="ref" class="secondary" title="Snapshot the current design and hold it in red for comparison">Save reference</button>
+      <button id="dl" title="Geometry only, 1 unit = 1 mm — true scale for CAD or cutting">Download SVG</button>
+    </div>
   </div>
 
   <div class="stage">
@@ -143,6 +154,12 @@
 
       <!-- tick labels -->
       <g id="ticks" fill="var(--muted)" font-size="11"></g>
+
+      <!-- saved reference snapshot, under the live design -->
+      <g id="refLayer" fill="none" stroke="var(--ref)" stroke-linejoin="round">
+        <path id="refCurve" stroke-width="2"/>
+        <path id="refInset" stroke-width="1" opacity="0.5" stroke-dasharray="8 6"/>
+      </g>
 
       <!-- the board (outline + hand-hold cutout, even-odd so the hole reads as a hole) -->
       <path id="curve" fill="var(--board-fill)" fill-rule="evenodd" stroke="var(--board)"
@@ -180,6 +197,7 @@
     <div class="stat"><div class="k" id="areaLabel">Area</div><div class="v" id="area">—</div></div>
     <div class="stat"><div class="k">Outline perimeter</div><div class="v" id="perim">—</div></div>
     <div class="stat"><div class="k">Hand hold</div><div class="v" id="hole">—</div></div>
+    <div class="stat"><div class="k">Reference</div><div class="v" id="refInfo" style="color:var(--ref)">none</div></div>
   </div>
 </div>
 
@@ -281,6 +299,22 @@ function draw() {
   $('hole').textContent = withHole ? (2 * HX + 2 * HR) + ' × ' + (2 * HR) + ' mm' : 'none';
 }
 
+// --- reference snapshot -------------------------------------------------
+let reference = null;
+
+function renderReference() {
+  $('refCurve').setAttribute('d', reference ? reference.outline + ' ' + reference.hole : '');
+  $('refInset').setAttribute('d', reference ? reference.caps : '');
+  $('refInfo').textContent = reference
+    ? `a ${reference.a.toFixed(1)} · b ${reference.b.toFixed(1)}` : 'none';
+  $('ref').textContent = reference ? 'Clear reference' : 'Save reference';
+}
+
+function toggleReference() {
+  reference = reference ? null : { ...current };
+  renderReference();
+}
+
 // Standalone SVG of the geometry alone: no grid, no labels, 1 user unit = 1 mm.
 function exportSVG() {
   const { a, b, outline, hole, caps } = current;
@@ -309,7 +343,9 @@ $('a').addEventListener('input', draw);
 $('b').addEventListener('input', draw);
 $('hasHole').addEventListener('change', draw);
 $('dl').addEventListener('click', exportSVG);
+$('ref').addEventListener('click', toggleReference);
 draw();
+renderReference();
 </script>
 </body>
 </html>
