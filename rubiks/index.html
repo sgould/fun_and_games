@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cube Scanner</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+  <script src="vendor/cubejs/cube.js"></script>
+  <script src="vendor/cubejs/solve.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Rubik's Cube Scanner &amp; Solver</h1>
+    <p class="muted">Show each face to the webcam, check the colours, then watch the solution.</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>1 · Scan</h2>
+      <div class="camera-wrap">
+        <canvas id="camera"></canvas>
+        <p id="camera-msg">Waiting for camera permission…</p>
+      </div>
+      <div id="mode" class="segmented">
+        <button data-mode="auto">Auto — just turn the cube</button>
+        <button data-mode="guided">Guided — face by face</button>
+      </div>
+      <div id="auto">
+        <p>Hold the cube so a face fills the grid, pause for a moment, then turn the <b>whole cube</b>
+          to show another face, in any order and any way up. Don't twist the layers. The grid turns
+          <span style="color:#ffd600">yellow</span> while it is reading and flashes when it takes a face.
+          Showing faces more than once makes the reading more reliable.</p>
+        <p id="auto-status"></p>
+        <div id="auto-faces" class="minis"></div>
+      </div>
+      <div id="guided" hidden>
+        <div id="chips" class="chips"></div>
+        <h3 id="step-title"></h3>
+        <p id="step-text"></p>
+      </div>
+      <div class="row">
+        <button id="capture" class="primary">📷 Capture face <kbd>Space</kbd></button>
+        <label><input type="checkbox" id="mirror" checked> Mirror view</label>
+        <select id="device" aria-label="Camera"></select>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>2 · Check</h2>
+      <p class="muted">Click a colour, then click any sticker that was read wrongly. Centres are fixed.</p>
+      <div id="palette" class="palette"></div>
+      <div id="net" class="net"></div>
+      <p id="validation"></p>
+      <p id="layout-note" class="muted"></p>
+      <div class="row">
+        <button id="solve" class="primary" disabled>Solve</button>
+        <button id="find-layout" hidden title="Search face positions, rotations and likely misreads for a possible cube">Find a valid layout</button>
+        <button id="by-hand">Fill in by hand</button>
+        <button id="reset">Start over</button>
+      </div>
+      <p id="solver-status" class="muted">Preparing solver…</p>
+    </section>
+
+    <section id="solution" class="panel wide" hidden>
+      <h2>3 · Solve</h2>
+      <p id="hold"></p>
+      <div class="solve-grid">
+        <div id="viewer"><button id="view-reset" title="Reset view">⟲</button></div>
+        <div>
+          <p id="progress" class="muted"></p>
+          <p id="current"></p>
+          <div class="row controls">
+            <button id="first" title="Back to scrambled">⏮</button>
+            <button id="prev" title="Previous move (←)">◀</button>
+            <button id="play" class="primary">▶ Play</button>
+            <button id="next" title="Next move (→)">▶|</button>
+            <button id="last" title="Jump to solved">⏭</button>
+          </div>
+          <label class="speed">Speed <input type="range" id="speed" min="0.3" max="3" step="0.1" value="1"></label>
+          <div id="moves" class="moves"></div>
+          <p class="muted small">Drag the cube to look around. Click a move to jump to it.
+            Notation: a letter alone is a clockwise quarter turn, ' is anticlockwise, 2 is a half turn.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
