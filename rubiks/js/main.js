@@ -21,7 +21,6 @@ const NEIGHBOURS = {
 const $ = id => document.getElementById(id);
 const state = {
   scans: {},        // face -> 9 rgb samples
-  manual: {},       // face -> true when filled in by hand
   auto: {},         // face -> 9 letters from the classifier
   overrides: {},    // facelet index -> letter set by clicking the net
   names: nameFaces({}),
@@ -38,14 +37,14 @@ const scanner = new Scanner($('camera'));
 const viewer = new Viewer($('viewer'));
 const autoScan = new AutoScan();
 
-const known = f => !!(state.scans[f] || state.manual[f]);
+const known = f => !!state.scans[f];
 const hex = f => STANDARD[state.names[f]];
 const colourName = f => state.names[f];
 
 function facelet(i) {
   if (state.overrides[i]) return state.overrides[i];
   const f = FACES[Math.floor(i / 9)], k = i % 9;
-  if (k === 4) return known(f) ? f : null;
+  if (k === 4) return f; // centres never move; unscanned ones take the standard scheme
   return state.auto[f]?.[k] ?? null;
 }
 const facelets = () => Array.from({ length: 54 }, (_, i) => facelet(i));
@@ -100,7 +99,6 @@ function capture() {
   }
   const f = state.current;
   state.scans[f] = colours;
-  delete state.manual[f];
   for (let k = 0; k < 9; k++) delete state.overrides[FACES.indexOf(f) * 9 + k];
   const next = ORDER.find(o => !known(o) && o !== f) ?? ORDER[(ORDER.indexOf(f) + 1) % 6];
   if (Object.keys(state.scans).length < 6 || !known(next)) state.current = next;
@@ -127,7 +125,6 @@ function findLayout() {
 // Place resolved faces on the cube; corrected stickers become outlined overrides.
 function applyLayout(res) {
   state.scans = res.faces;
-  state.manual = {};
   state.overrides = {};
   state.auto = classify(state.scans);
   state.names = nameFaces(Object.fromEntries(Object.entries(state.scans).map(([f, s]) => [f, s[4]])));
@@ -224,13 +221,8 @@ function renderNet() {
   $('solve').disabled = !!msg || !solver.ready;
 }
 
-function fillByHand() {
-  for (const f of FACES) if (!known(f)) state.manual[f] = true;
-  recompute();
-}
-
 function resetAll() {
-  Object.assign(state, { scans: {}, manual: {}, auto: {}, overrides: {}, current: 'F', names: nameFaces({}),
+  Object.assign(state, { scans: {}, auto: {}, overrides: {}, current: 'F', names: nameFaces({}),
     fixed: new Set(), uncertain: false, layoutNote: '' });
   autoScan.reset();
   renderAll();
@@ -338,7 +330,6 @@ $('net').onclick = e => {
   state.fixed.delete(Number(i));
   renderNet();
 };
-$('by-hand').onclick = fillByHand;
 $('find-layout').onclick = () => { state.fixed.clear(); findLayout(); };
 $('reset').onclick = resetAll;
 $('solve').onclick = solve;

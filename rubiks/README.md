@@ -32,7 +32,9 @@ Everything runs offline; three.js and the solver are in `vendor/`.
    layout* reruns the search.
 2. **Check**: the unfolded net shows what was read. Pick a colour and click any sticker
    that is wrong. The page checks that the cube is actually solvable and says what looks wrong
-   if it isn't. With no camera, use *Fill in by hand*.
+   if it isn't. With no camera, just paint every sticker: centres
+   start in the standard scheme (white top, green front, red right; yellow, blue and orange
+   opposite).
 3. **Solve**: play, step (← / →), or click any move. Drag to orbit the cube.
 
 ## Tips for good scans
